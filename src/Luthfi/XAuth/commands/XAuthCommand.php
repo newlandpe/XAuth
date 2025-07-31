@@ -36,6 +36,12 @@ class XAuthCommand extends Command {
         $subCommand = strtolower((string)array_shift($args));
 
         switch ($subCommand) {
+            case "help":
+                $messages = (array)$this->plugin->getCustomMessages()->get("messages");
+                if (isset($messages["xauth_usage"])) {
+                    $sender->sendMessage((string)$messages["xauth_usage"]);
+                }
+                break;
             case "lock":
                 if (count($args) !== 1) {
                     $messages = (array)$this->plugin->getCustomMessages()->get("messages");
@@ -105,16 +111,7 @@ class XAuthCommand extends Command {
                     return false;
                 }
 
-                $messages = (array)$this->plugin->getCustomMessages()->get("messages");
-                if (isset($messages["xauth_player_lookup_header"])) {
-                    $sender->sendMessage(str_replace('{player_name}', $playerName, (string)$messages["xauth_player_lookup_header"]));
-                    $sender->sendMessage(str_replace('{date}', (isset($playerData["registered_at"]) ? date("Y-m-d H:i:s", (int)$playerData["registered_at"]) : "N/A"), (string)($messages["xauth_registered"] ?? '')));
-                    $sender->sendMessage(str_replace('{ip}', (isset($playerData["registration_ip"]) ? (string)$playerData["registration_ip"] : "N/A"), (string)($messages["xauth_registration_ip"] ?? '')));
-                    $sender->sendMessage(str_replace('{ip}', (string)($playerData["ip"] ?? "N/A"), (string)($messages["xauth_last_login_ip"] ?? '')));
-                    $sender->sendMessage(str_replace('{date}', (isset($playerData["last_login_at"]) ? date("Y-m-d H:i:s", (int)$playerData["last_login_at"]) : "N/A"), (string)($messages["xauth_last_login"] ?? '')));
-                    $sender->sendMessage(str_replace('{status}', ($this->plugin->getDataProvider()->isPlayerLocked($playerName) ? "Yes" : "No"), (string)($messages["xauth_locked"] ?? '')));
-                    $sender->sendMessage((string)($messages["xauth_lookup_footer"] ?? ''));
-                }
+                $messages = (array)$this->plugin->getCustomMessages()->get("messages");                if (isset($messages["xauth_player_lookup_header"])) {                    $lookupMessage = str_replace('{player_name}', $playerName, (string)$messages["xauth_player_lookup_header"]) . "\n";                    $lookupMessage .= str_replace('{date}', (isset($playerData["registered_at"]) ? date("Y-m-d H:i:s", (int)$playerData["registered_at"]) : "N/A"), (string)($messages["xauth_registered"] ?? '')) . "\n";                    $lookupMessage .= str_replace('{ip}', (isset($playerData["registration_ip"]) ? (string)$playerData["registration_ip"] : "N/A"), (string)($messages["xauth_registration_ip"] ?? '')) . "\n";                    $lookupMessage .= str_replace('{ip}', (string)($playerData["ip"] ?? "N/A"), (string)($messages["xauth_last_login_ip"] ?? '')) . "\n";                    $lookupMessage .= str_replace('{date}', (isset($playerData["last_login_at"]) ? date("Y-m-d H:i:s", (int)$playerData["last_login_at"]) : "N/A"), (string)($messages["xauth_last_login"] ?? '')) . "\n";                    $lookupMessage .= str_replace('{status}', ($this->plugin->getDataProvider()->isPlayerLocked($playerName) ? "Yes" : "No"), (string)($messages["xauth_locked"] ?? '')) . "\n";                    $lookupMessage .= (string)($messages["xauth_lookup_footer"] ?? '');                    $sender->sendMessage($lookupMessage);                }
                 break;
             case "setpassword":
                 if (count($args) !== 2) {
