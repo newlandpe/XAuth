@@ -17,7 +17,7 @@ class YamlProvider implements DataProviderInterface {
         $this->playerData = new Config($plugin->getDataFolder() . "players.yml", Config::YAML);
     }
 
-    public function getPlayer(Player|OfflinePlayer $player): ?array<string, mixed> {
+    public function getPlayer(Player|OfflinePlayer $player): ?array {
         $name = strtolower($player->getName());
         $data = $this->playerData->get($name);
         return is_array($data) ? $data : null;
