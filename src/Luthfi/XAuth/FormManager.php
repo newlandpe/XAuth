@@ -18,7 +18,7 @@ class FormManager {
         $this->plugin = $plugin;
     }
 
-    public function sendLoginForm(Player $player): void {
+    public function sendLoginForm(Player $player, ?string $errorMessage = null): void {
         $bruteforceConfig = (array)$this->plugin->getConfig()->get('bruteforce_protection');
 
         $enabled = (bool)($bruteforceConfig['enabled'] ?? false);
@@ -34,6 +34,7 @@ class FormManager {
 
         $form = new CustomForm(function (Player $player, ?array $data): void {
             if ($data === null) {
+                $this->sendLoginForm($player); // Resend form on close
                 return;
             }
 
@@ -41,20 +42,19 @@ class FormManager {
             $playerData = $this->plugin->getDataProvider()->getPlayer($player);
 
             if ($playerData === null) {
-                // This should not happen if the logic is correct
+                $this->sendLoginForm($player, "§cAn unexpected error occurred. Please try again.");
                 return;
             }
 
             if ($this->plugin->getDataProvider()->isPlayerLocked($player->getName())) {
-                $player->sendMessage("§cYour account has been locked by an administrator.");
+                $this->sendLoginForm($player, "§cYour account has been locked by an administrator.");
                 return;
             }
 
             if (!password_verify($password, (string)($playerData["password"] ?? ''))) {
                 $this->plugin->getAuthManager()->incrementLoginAttempts($player);
                 $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["incorrect_password"] ?? "");
-                $player->sendMessage($message);
-                $this->sendLoginForm($player); // Resend the form
+                $this->sendLoginForm($player, $message); // Resend the form with error
                 return;
             }
 
@@ -66,13 +66,17 @@ class FormManager {
         });
 
         $form->setTitle((string)(((array)$this->plugin->getCustomMessages()->get("forms"))["login"]["title"] ?? "Login"));
+        if ($errorMessage !== null) {
+            $form->addLabel($errorMessage);
+        }
         $form->addInput((string)(((array)$this->plugin->getCustomMessages()->get("forms"))["login"]["password_label"] ?? "Password"), (string)(((array)$this->plugin->getCustomMessages()->get("forms"))["login"]["password_placeholder"] ?? ""), null, null);
         $player->sendForm($form);
     }
 
-    public function sendRegisterForm(Player $player): void {
+    public function sendRegisterForm(Player $player, ?string $errorMessage = null): void {
         $form = new CustomForm(function (Player $player, ?array $data): void {
             if ($data === null) {
+                $this->sendRegisterForm($player); // Resend form on close
                 return;
             }
 
@@ -81,33 +85,34 @@ class FormManager {
 
             if (strlen($password) < 6) {
                 $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["password_too_short"] ?? "");
-                $player->sendMessage($message);
-                $this->sendRegisterForm($player);
+                $this->sendRegisterForm($player, $message);
                 return;
             }
 
             if ($password !== $confirmPassword) {
                 $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["password_mismatch"] ?? "");
-                $player->sendMessage($message);
-                $this->sendRegisterForm($player);
+                $this->sendRegisterForm($player, $message);
                 return;
             }
 
             $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
             $this->plugin->getDataProvider()->registerPlayer($player, $hashedPassword);
-            (new PlayerRegisterEvent($player))->call();
             $this->plugin->getAuthManager()->authenticatePlayer($player);
+            (new PlayerRegisterEvent($player))->call();
             $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["register_success"] ?? "");
             $player->sendMessage($message);
         });
 
         $form->setTitle((string)(((array)$this->plugin->getCustomMessages()->get("forms"))["register"]["title"] ?? "Register"));
+        if ($errorMessage !== null) {
+            $form->addLabel($errorMessage);
+        }
         $form->addInput((string)(((array)$this->plugin->getCustomMessages()->get("forms"))["register"]["password_label"] ?? "Password"), (string)(((array)$this->plugin->getCustomMessages()->get("forms"))["register"]["password_placeholder"] ?? ""), null, null);
         $form->addInput((string)(((array)$this->plugin->getCustomMessages()->get("forms"))["register"]["confirm_password_label"] ?? "Confirm Password"), (string)(((array)$this->plugin->getCustomMessages()->get("forms"))["register"]["confirm_password_placeholder"] ?? ""), null, null);
         $player->sendForm($form);
     }
 
-    public function sendChangePasswordForm(Player $player): void {
+    public function sendChangePasswordForm(Player $player, ?string $errorMessage = null): void {
         $form = new CustomForm(function (Player $player, ?array $data): void {
             if ($data === null) {
                 return;
@@ -124,21 +129,18 @@ class FormManager {
 
             if (!password_verify($oldPassword, (string)($playerData["password"] ?? ''))) {
                 $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["incorrect_password"] ?? "");
-                $player->sendMessage($message);
-                $this->sendChangePasswordForm($player);
+                $this->sendChangePasswordForm($player, $message);
                 return;
             }
 
             if (($message = $this->plugin->getPasswordValidator()->validatePassword($newPassword)) !== null) {
-                $player->sendMessage($message);
-                $this->sendChangePasswordForm($player);
+                $this->sendChangePasswordForm($player, $message);
                 return;
             }
 
             if ($newPassword !== $confirmNewPassword) {
                 $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["password_mismatch"] ?? "");
-                $player->sendMessage($message);
-                $this->sendChangePasswordForm($player);
+                $this->sendChangePasswordForm($player, $message);
                 return;
             }
 
@@ -160,6 +162,9 @@ class FormManager {
         $confirmNewPasswordLabel = (string)($changepasswordConfig["confirm_new_password_label"] ?? "");
 
         $form->setTitle((string)($changepasswordConfig["title"] ?? "Change Password"));
+        if ($errorMessage !== null) {
+            $form->addLabel($errorMessage);
+        }
         $form->addLabel((string)($changepasswordConfig["content"] ?? ""));
         $form->addInput((string)($changepasswordConfig["old_password_label"] ?? "Old Password"), "", null, null);
         $form->addInput((string)($changepasswordConfig["new_password_label"] ?? "New Password"), "", null, null);
