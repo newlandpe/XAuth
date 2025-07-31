@@ -86,7 +86,16 @@ class LoginCommand extends Command {
 
         $this->plugin->getAuthManager()->authenticatePlayer($sender);
 
-        (new PlayerLoginEvent($sender))->call();
+        $event = new PlayerLoginEvent($sender);
+        $event->call();
+
+        if ($event->isAuthenticationDelayed()) {
+            return true;
+        }
+
+        if ($event->isCancelled()) {
+            return true;
+        }
 
         $messages = (array)$this->plugin->getCustomMessages()->get("messages");
         if (isset($messages["login_success"])) {

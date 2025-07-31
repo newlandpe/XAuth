@@ -72,7 +72,16 @@ class Main extends PluginBase implements Listener {
 
             if ((bool)($this->configData->get("auto-login") ?? false) && $ip === $currentIp) {
                 $this->authManager->authenticatePlayer($player);
-                (new PlayerLoginEvent($player))->call();
+                $event = new PlayerLoginEvent($player);
+                $event->call();
+
+                if ($event->isAuthenticationDelayed()) {
+                    return;
+                }
+
+                if ($event->isCancelled()) {
+                    return;
+                }
                 $message = (string)(((array)$this->languageMessages->get("messages"))["login_success"] ?? "");
                 $player->sendMessage($message);
                 $this->sendTitleMessage($player, "login_success");
@@ -143,6 +152,13 @@ class Main extends PluginBase implements Listener {
 
     public function getFormManager(): ?FormManager {
         return $this->formManager;
+    }
+
+    public function forceLogin(Player $player): void {
+        $this->authManager->authenticatePlayer($player);
+        $message = (string)(((array)$this->languageMessages->get("messages"))["login_success"] ?? "");
+        $player->sendMessage($message);
+        $this->sendTitleMessage($player, "login_success");
     }
 
     public function onDisable(): void {

@@ -58,9 +58,19 @@ class FormManager {
                 return;
             }
 
+            $event = new PlayerLoginEvent($player);
+            $event->call();
+
+            if ($event->isAuthenticationDelayed()) {
+                return;
+            }
+
+            if ($event->isCancelled()) {
+                return;
+            }
+
             $this->plugin->getDataProvider()->updatePlayerIp($player);
             $this->plugin->getAuthManager()->authenticatePlayer($player);
-            (new PlayerLoginEvent($player))->call();
             $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["login_success"] ?? "");
             $player->sendMessage($message);
         });

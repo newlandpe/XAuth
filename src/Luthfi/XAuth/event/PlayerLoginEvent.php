@@ -12,7 +12,17 @@ use pocketmine\event\CancellableTrait;
 class PlayerLoginEvent extends PlayerEvent implements Cancellable {
     use CancellableTrait;
 
+    private bool $isAuthenticationDelayed = false;
+
     public function __construct(Player $player) {
         $this->player = $player;
+    }
+
+    public function setAuthenticationDelayed(bool $isDelayed): void {
+        $this->isAuthenticationDelayed = $isDelayed;
+    }
+
+    public function isAuthenticationDelayed(): bool {
+        return $this->isAuthenticationDelayed;
     }
 }
