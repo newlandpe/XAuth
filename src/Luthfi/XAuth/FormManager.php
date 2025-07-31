@@ -42,12 +42,12 @@ class FormManager {
             $playerData = $this->plugin->getDataProvider()->getPlayer($player);
 
             if ($playerData === null) {
-                $this->sendLoginForm($player, "§cAn unexpected error occurred. Please try again.");
+                $this->sendLoginForm($player, (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["unexpected_error"] ?? ""));
                 return;
             }
 
             if ($this->plugin->getDataProvider()->isPlayerLocked($player->getName())) {
-                $this->sendLoginForm($player, "§cYour account has been locked by an administrator.");
+                $this->sendLoginForm($player, (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["account_locked_by_admin"] ?? ""));
                 return;
             }
 

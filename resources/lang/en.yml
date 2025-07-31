@@ -39,6 +39,7 @@ messages:
   set_password_success: "§aPlayer password has been set successfully."
   player_not_registered: "§cPlayer is not registered."
   login_attempts_exceeded: "§cYou have exceeded the number of login attempts. Please try again in {minutes} minutes."
+  unexpected_error: "§cAn unexpected error occurred. Please try again."
 
 forms:
   login:
