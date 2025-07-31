@@ -18,7 +18,7 @@ class SqliteProvider implements DataProviderInterface {
         $this->db->exec("CREATE TABLE IF NOT EXISTS players (name TEXT PRIMARY KEY, password TEXT, ip TEXT, locked INTEGER DEFAULT 0, registered_at INTEGER, registration_ip TEXT, last_login_at INTEGER)");
     }
 
-    public function getPlayer(Player|OfflinePlayer $player): ?array<string, mixed> {
+    public function getPlayer(Player|OfflinePlayer $player): ?array {
         $name = strtolower($player->getName());
         $stmt = $this->db->prepare("SELECT * FROM players WHERE name = :name");
         if ($stmt === false) return null;

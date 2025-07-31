@@ -31,7 +31,7 @@ class MysqlProvider implements DataProviderInterface {
         $this->db->exec("CREATE TABLE IF NOT EXISTS players (name VARCHAR(255) PRIMARY KEY, password VARCHAR(255), ip VARCHAR(255), locked BOOLEAN DEFAULT FALSE, registered_at INT, registration_ip VARCHAR(255), last_login_at INT)");
     }
 
-    public function getPlayer(Player|OfflinePlayer $player): ?array<string, mixed> {
+    public function getPlayer(Player|OfflinePlayer $player): ?array {
         $name = strtolower($player->getName());
         $stmt = $this->db->prepare("SELECT * FROM players WHERE name = :name");
         $stmt->bindValue(":name", $name);
