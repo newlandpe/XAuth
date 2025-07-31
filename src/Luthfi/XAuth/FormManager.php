@@ -65,8 +65,8 @@ class FormManager {
             $player->sendMessage($message);
         });
 
-        $form->setTitle("Login");
-        $form->addInput("Password", "", null, true);
+        $form->setTitle((string)(((array)$this->plugin->getCustomMessages()->get("forms"))["login"]["title"] ?? "Login"));
+        $form->addInput((string)(((array)$this->plugin->getCustomMessages()->get("forms"))["login"]["password_label"] ?? "Password"), (string)(((array)$this->plugin->getCustomMessages()->get("forms"))["login"]["password_placeholder"] ?? ""), null, null);
         $player->sendForm($form);
     }
 
@@ -101,9 +101,9 @@ class FormManager {
             $player->sendMessage($message);
         });
 
-        $form->setTitle("Register");
-        $form->addInput("Password", "", null, true);
-        $form->addInput("Confirm Password", "", null, true);
+        $form->setTitle((string)(((array)$this->plugin->getCustomMessages()->get("forms"))["register"]["title"] ?? "Register"));
+        $form->addInput((string)(((array)$this->plugin->getCustomMessages()->get("forms"))["register"]["password_label"] ?? "Password"), (string)(((array)$this->plugin->getCustomMessages()->get("forms"))["register"]["password_placeholder"] ?? ""), null, null);
+        $form->addInput((string)(((array)$this->plugin->getCustomMessages()->get("forms"))["register"]["confirm_password_label"] ?? "Confirm Password"), (string)(((array)$this->plugin->getCustomMessages()->get("forms"))["register"]["confirm_password_placeholder"] ?? ""), null, null);
         $player->sendForm($form);
     }
 
@@ -159,11 +159,11 @@ class FormManager {
         $newPasswordLabel = (string)($changepasswordConfig["new_password_label"] ?? "");
         $confirmNewPasswordLabel = (string)($changepasswordConfig["confirm_new_password_label"] ?? "");
 
-        $form->setTitle($title);
-        $form->addLabel($content);
-        $form->addInput($oldPasswordLabel, "", null, true);
-        $form->addInput($newPasswordLabel, "", null, true);
-        $form->addInput($confirmNewPasswordLabel, "", null, true);
+        $form->setTitle((string)($changepasswordConfig["title"] ?? "Change Password"));
+        $form->addLabel((string)($changepasswordConfig["content"] ?? ""));
+        $form->addInput((string)($changepasswordConfig["old_password_label"] ?? "Old Password"), "", null, null);
+        $form->addInput((string)($changepasswordConfig["new_password_label"] ?? "New Password"), "", null, null);
+        $form->addInput((string)($changepasswordConfig["confirm_new_password_label"] ?? "Confirm New Password"), "", null, null);
         $player->sendForm($form);
     }
 }
