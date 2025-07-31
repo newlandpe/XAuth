@@ -9,7 +9,7 @@ use pocketmine\player\Player;
 
 interface DataProviderInterface {
 
-    public function getPlayer(Player|OfflinePlayer $player): ?array;
+    public function getPlayer(Player|OfflinePlayer $player): ?array<string, mixed>;
 
     public function isPlayerRegistered(string $playerName): bool;
 

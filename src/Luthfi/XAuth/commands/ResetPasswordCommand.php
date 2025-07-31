@@ -22,7 +22,10 @@ class ResetPasswordCommand extends Command {
 
     public function execute(CommandSender $sender, string $label, array $args): bool {
         if (!$sender instanceof Player) {
-            $sender->sendMessage($this->plugin->getCustomMessages()->get("messages")["command_only_in_game"]);
+            $messages = $this->plugin->getCustomMessages()->get("messages");
+            if (is_array($messages) && isset($messages["command_only_in_game"])) {
+                $sender->sendMessage((string)$messages["command_only_in_game"]);
+            }
             return false;
         }
 
@@ -39,15 +42,21 @@ class ResetPasswordCommand extends Command {
 
         $playerData = $this->plugin->getDataProvider()->getPlayer($sender);
         if ($playerData === null) {
-            $sender->sendMessage($this->plugin->getCustomMessages()->get("messages")["not_registered"]);
+            $messages = $this->plugin->getCustomMessages()->get("messages");
+            if (is_array($messages) && isset($messages["not_registered"])) {
+                $sender->sendMessage((string)$messages["not_registered"]);
+            }
             return false;
         }
 
-        $oldPassword = $args[0];
-        $newPassword = $args[1];
+        $oldPassword = (string)($args[0] ?? '');
+        $newPassword = (string)($args[1] ?? '');
 
-        if (!password_verify($oldPassword, $playerData["password"])) {
-            $sender->sendMessage($this->plugin->getCustomMessages()->get("messages")["incorrect_password"]);
+        if (!password_verify($oldPassword, (string)($playerData["password"] ?? ''))) {
+            $messages = $this->plugin->getCustomMessages()->get("messages");
+            if (is_array($messages) && isset($messages["incorrect_password"])) {
+                $sender->sendMessage((string)$messages["incorrect_password"]);
+            }
             return false;
         }
 
@@ -61,7 +70,10 @@ class ResetPasswordCommand extends Command {
 
         (new PlayerChangePasswordEvent($sender))->call();
 
-        $sender->sendMessage($this->plugin->getCustomMessages()->get("messages")["change_password_success"]);
+        $messages = $this->plugin->getCustomMessages()->get("messages");
+        if (is_array($messages) && isset($messages["change_password_success"])) {
+            $sender->sendMessage((string)$messages["change_password_success"]);
+        }
         return true;
     }
 }

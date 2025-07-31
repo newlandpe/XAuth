@@ -18,13 +18,32 @@ use pocketmine\utils\Config;
 
 class Main extends PluginBase implements Listener {
 
-    private DataProviderInterface $dataProvider;
-    private Config $configData;
-    private Config $languageMessages;
-    private AuthManager $authManager;
+    use Luthfi\XAuth\commands\LoginCommand;
+use Luthfi\XAuth\commands\RegisterCommand;
+use Luthfi\XAuth\commands\ResetPasswordCommand;
+use Luthfi\XAuth\commands\XAuthCommand;
+use Luthfi\XAuth\database\DataProviderFactory;
+use Luthfi\XAuth\database\DataProviderInterface;
+use Luthfi\XAuth\event\PlayerLoginEvent;
+use pocketmine\event\Listener;
+use pocketmine\event\player\PlayerJoinEvent;
+use pocketmine\player\Player;
+use pocketmine\plugin\PluginBase;
+use pocketmine\utils\Config;
+
+class Main extends PluginBase implements Listener {
+
+    private ?DataProviderInterface $dataProvider = null;
+    private ?Config $configData = null;
+    private ?Config $languageMessages = null;
+    private ?AuthManager $authManager = null;
+    private ?FormManager $formManager = null;
+    private ?PasswordValidator $passwordValidator = null;
 
     public function onEnable(): void {
         $this->authManager = new AuthManager();
+        $this->passwordValidator = new PasswordValidator($this);
+        $this->formManager = new FormManager($this);
         $this->getServer()->getPluginManager()->registerEvents(new EventListener($this, $this->authManager), $this);
         $this->getServer()->getPluginManager()->registerEvents($this, $this);
         $this->saveDefaultConfig();
@@ -35,6 +54,9 @@ class Main extends PluginBase implements Listener {
         $this->dataProvider = DataProviderFactory::create($this);
         $this->configData = $this->getConfig();
         $language = $this->configData->get("language", "en");
+        if (!is_string($language)) {
+            $language = "en";
+        }
         $this->languageMessages = new Config($this->getDataFolder() . "lang/" . $language . ".yml", Config::YAML);
         $this->checkConfigVersion();
         $this->getServer()->getCommandMap()->register("register", new RegisterCommand($this));
@@ -59,71 +81,77 @@ class Main extends PluginBase implements Listener {
         $playerData = $this->dataProvider->getPlayer($player);
 
         if ($playerData !== null) {
-            $ip = $playerData["ip"];
+            $ip = (string)($playerData["ip"] ?? "");
             $currentIp = $player->getNetworkSession()->getIp();
 
-            if ($this->configData->get("auto-login") && $ip === $currentIp) {
+            if ((bool)($this->configData->get("auto-login") ?? false) && $ip === $currentIp) {
                 $this->authManager->authenticatePlayer($player);
                 (new PlayerLoginEvent($player))->call();
-                $player->sendMessage($this->languageMessages->get("messages")["login_success"]);
+                $message = (string)($this->languageMessages->get("messages")["login_success"] ?? "");
+                $player->sendMessage($message);
                 $this->sendTitleMessage($player, "login_success");
             } else {
-                $player->sendMessage($this->languageMessages->get("messages")["login_prompt"]);
+                $message = (string)($this->languageMessages->get("messages")["login_prompt"] ?? "");
+                $player->sendMessage($message);
                 $this->sendTitleMessage($player, "login_prompt");
             }
         } else {
-            $player->sendMessage($this->languageMessages->get("messages")["register_prompt"]);
+            $message = (string)($this->languageMessages->get("messages")["register_prompt"] ?? "");
+            $player->sendMessage($message);
             $this->sendTitleMessage($player, "register_prompt");
         }
     }
 
     private function checkConfigVersion(): void {
-        $currentVersion = $this->configData->get("config-version", 1.0);
+        $currentVersion = (float)($this->configData->get("config-version", 1.0) ?? 1.0);
         if ($currentVersion < 1.0) {
             $this->getLogger()->warning("Your config.yml is outdated! Please update it to the latest version.");
         }
     }
 
     private function sendTitleMessage(Player $player, string $messageKey): void {
-        if ($this->configData->get("enable_titles")) {
-            $titleConfig = $this->languageMessages->get("titles")[$messageKey];
-            $title = $titleConfig["title"];
-            $subtitle = $titleConfig["subtitle"];
-            $interval = $titleConfig["interval"] * 20;
+        if ((bool)($this->configData->get("enable_titles") ?? false)) {
+            $titlesConfig = $this->languageMessages->get("titles");
+            if (is_array($titlesConfig) && isset($titlesConfig[$messageKey])) {
+                $titleConfig = $titlesConfig[$messageKey];
+                $title = (string)($titleConfig["title"] ?? "");
+                $subtitle = (string)($titleConfig["subtitle"] ?? "");
+                $interval = (int)(($titleConfig["interval"] ?? 0) * 20);
 
-            $this->getScheduler()->scheduleRepeatingTask(new class($player, $title, $subtitle) extends \pocketmine\scheduler\Task {
-                private Player $player;
-                private string $title;
-                private string $subtitle;
+                $this->getScheduler()->scheduleRepeatingTask(new class($player, $title, $subtitle) extends \pocketmine\scheduler\Task {
+                    private Player $player;
+                    private string $title;
+                    private string $subtitle;
 
-                public function __construct(Player $player, string $title, string $subtitle) {
-                    $this->player = $player;
-                    $this->title = $title;
-                    $this->subtitle = $subtitle;
-                }
-
-                public function onRun(): void {
-                    if ($this->player->isOnline()) {
-                        $this->player->sendTitle($this->title, $this->subtitle);
+                    public function __construct(Player $player, string $title, string $subtitle) {
+                        $this->player = $player;
+                        $this->title = $title;
+                        $this->subtitle = $subtitle;
                     }
-                }
-            }, $interval);
+
+                    public function onRun(): void {
+                        if ($this->player->isOnline()) {
+                            $this->player->sendTitle($this->title, $this->subtitle);
+                        }
+                    }
+                }, $interval);
+            }
         }
     }
 
-    public function getAuthManager(): AuthManager {
+    public function getAuthManager(): ?AuthManager {
         return $this->authManager;
     }
 
-    public function getDataProvider(): DataProviderInterface {
+    public function getDataProvider(): ?DataProviderInterface {
         return $this->dataProvider;
     }
 
-    public function getCustomMessages(): Config {
+    public function getCustomMessages(): ?Config {
         return $this->languageMessages;
     }
 
-    public function getPasswordValidator(): PasswordValidator {
+    public function getPasswordValidator(): ?PasswordValidator {
         return $this->passwordValidator;
     }
 
@@ -132,13 +160,15 @@ class Main extends PluginBase implements Listener {
     }
 
     public function onDisable(): void {
-        $this->dataProvider->close();
+        if ($this->dataProvider !== null) {
+            $this->dataProvider->close();
+        }
     }
 
     public function reloadConfig(): void {
         parent::reloadConfig();
         $this->configData = $this->getConfig();
-        $language = $this->configData->get("language", "en");
+        $language = (string)($this->configData->get("language", "en") ?? "en");
         $this->languageMessages = new Config($this->getDataFolder() . "lang/" . $language . ".yml", Config::YAML);
         $this->getLogger()->info("XAuth configuration and language messages reloaded.");
     }

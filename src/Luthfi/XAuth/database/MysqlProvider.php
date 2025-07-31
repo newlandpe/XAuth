@@ -14,18 +14,30 @@ class MysqlProvider implements DataProviderInterface {
     private PDO $db;
 
     public function __construct(Main $plugin) {
-        $config = $plugin->getConfig()->get('database')['mysql'];
-        $this->db = new PDO("mysql:host=" . $config['host'] . ";port=" . $config['port'] . ";dbname=" . $config['database'], $config['user'], $config['password']);
+        $config = $plugin->getConfig()->get('database');
+        if (!is_array($config)) {
+            $config = [];
+        }
+        $mysqlConfig = (array)($config['mysql'] ?? []);
+
+        $host = (string)($mysqlConfig['host'] ?? '127.0.0.1');
+        $port = (int)($mysqlConfig['port'] ?? 3306);
+        $database = (string)($mysqlConfig['database'] ?? 'xauth');
+        $user = (string)($mysqlConfig['user'] ?? 'root');
+        $password = (string)($mysqlConfig['password'] ?? '');
+
+        $this->db = new PDO("mysql:host=" . $host . ";port=" . $port . ";dbname=" . $database, $user, $password);
+        $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $this->db->exec("CREATE TABLE IF NOT EXISTS players (name VARCHAR(255) PRIMARY KEY, password VARCHAR(255), ip VARCHAR(255), locked BOOLEAN DEFAULT FALSE, registered_at INT, registration_ip VARCHAR(255), last_login_at INT)");
     }
 
-    public function getPlayer(Player|OfflinePlayer $player): ?array {
+    public function getPlayer(Player|OfflinePlayer $player): ?array<string, mixed> {
         $name = strtolower($player->getName());
         $stmt = $this->db->prepare("SELECT * FROM players WHERE name = :name");
         $stmt->bindValue(":name", $name);
         $stmt->execute();
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        return $result ?: null;
+        return is_array($result) ? $result : null;
     }
 
     public function isPlayerRegistered(string $playerName): bool {
@@ -39,10 +51,13 @@ class MysqlProvider implements DataProviderInterface {
     public function registerPlayer(Player $player, string $hashedPassword): void {
         $name = strtolower($player->getName());
         $ip = $player->getNetworkSession()->getIp();
-        $stmt = $this->db->prepare("INSERT INTO players (name, password, ip) VALUES (:name, :password, :ip)");
+        $stmt = $this->db->prepare("INSERT INTO players (name, password, ip, registered_at, registration_ip, last_login_at) VALUES (:name, :password, :ip, :registered_at, :registration_ip, :last_login_at)");
         $stmt->bindValue(":name", $name);
         $stmt->bindValue(":password", $hashedPassword);
         $stmt->bindValue(":ip", $ip);
+        $stmt->bindValue(":registered_at", time());
+        $stmt->bindValue(":registration_ip", $ip);
+        $stmt->bindValue(":last_login_at", time());
         $stmt->execute();
     }
 
@@ -85,7 +100,7 @@ class MysqlProvider implements DataProviderInterface {
         $stmt->bindValue(":name", $name);
         $stmt->execute();
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        return $result !== false && (bool)$result['locked'];
+        return is_array($result) && (bool)($result['locked'] ?? false);
     }
 
     public function close(): void {

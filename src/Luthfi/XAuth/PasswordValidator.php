@@ -16,25 +16,34 @@ class PasswordValidator {
 
     public function validatePassword(string $password): ?string {
         $complexityConfig = $this->plugin->getConfig()->get('password_complexity');
-
-        if (strlen($password) < $complexityConfig['min_length']) {
-            return str_replace('{length}', (string)$complexityConfig['min_length'], $this->plugin->getCustomMessages()->get("messages")["password_too_short"]);
+        if (!is_array($complexityConfig)) {
+            $complexityConfig = []; // Default to empty array if not array
         }
 
-        if ($complexityConfig['require_uppercase'] && !preg_match('/[A-Z]', $password)) {
-            return $this->plugin->getCustomMessages()->get("messages")["password_no_uppercase"];
+        $minLength = (int)($complexityConfig['min_length'] ?? 6);
+        if (strlen($password) < $minLength) {
+            $message = (string)($this->plugin->getCustomMessages()->get("messages")["password_too_short"] ?? "");
+            return str_replace('{length}', (string)$minLength, $message);
         }
 
-        if ($complexityConfig['require_lowercase'] && !preg_match('/[a-z]', $password)) {
-            return $this->plugin->getCustomMessages()->get("messages")["password_no_lowercase"];
+        $requireUppercase = (bool)($complexityConfig['require_uppercase'] ?? false);
+        if ($requireUppercase && !preg_match('/[A-Z]/', $password)) {
+            return (string)($this->plugin->getCustomMessages()->get("messages")["password_no_uppercase"] ?? "");
         }
 
-        if ($complexityConfig['require_number'] && !preg_match('/[0-9]', $password)) {
-            return $this->plugin->getCustomMessages()->get("messages")["password_no_number"];
+        $requireLowercase = (bool)($complexityConfig['require_lowercase'] ?? false);
+        if ($requireLowercase && !preg_match('/[a-z]/', $password)) {
+            return (string)($this->plugin->getCustomMessages()->get("messages")["password_no_lowercase"] ?? "");
         }
 
-        if ($complexityConfig['require_symbol'] && !preg_match('/[^a-zA-Z0-9]', $password)) {
-            return $this->plugin->getCustomMessages()->get("messages")["password_no_symbol"];
+        $requireNumber = (bool)($complexityConfig['require_number'] ?? false);
+        if ($requireNumber && !preg_match('/[0-9]/', $password)) {
+            return (string)($this->plugin->getCustomMessages()->get("messages")["password_no_number"] ?? "");
+        }
+
+        $requireSymbol = (bool)($complexityConfig['require_symbol'] ?? false);
+        if ($requireSymbol && !preg_match('/[^a-zA-Z0-9]/', $password)) {
+            return (string)($this->plugin->getCustomMessages()->get("messages")["password_no_symbol"] ?? "");
         }
 
         return null;

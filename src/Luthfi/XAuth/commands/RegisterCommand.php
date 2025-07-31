@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Luthfi\XAuth\commands;
 
 use Luthfi\XAuth\Main;
+use Luthfi\XAuth\event\PlayerRegisterEvent;
 use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
 use pocketmine\player\Player;
@@ -21,25 +22,34 @@ class RegisterCommand extends Command {
 
     public function execute(CommandSender $sender, string $label, array $args): bool {
         if (!$sender instanceof Player) {
-            $sender->sendMessage($this->plugin->getCustomMessages()->get("messages")["command_only_in_game"]);
+            $messages = $this->plugin->getCustomMessages()->get("messages");
+            if (is_array($messages) && isset($messages["command_only_in_game"])) {
+                $sender->sendMessage((string)$messages["command_only_in_game"]);
+            }
             return false;
         }
 
         $name = strtolower($sender->getName());
         if (count($args) !== 2) {
-            $sender->sendMessage($this->plugin->getCustomMessages()->get("register_usage"));
+            $messages = $this->plugin->getCustomMessages()->get("messages");
+            if (is_array($messages) && isset($messages["register_usage"])) {
+                $sender->sendMessage((string)$messages["register_usage"]);
+            }
             return false;
         }
 
         $playerData = $this->plugin->getDataProvider()->getPlayer($sender);
 
         if ($playerData !== null) {
-            $sender->sendMessage($this->plugin->getCustomMessages()->get("messages")["already_registered"]);
+            $messages = $this->plugin->getCustomMessages()->get("messages");
+            if (is_array($messages) && isset($messages["already_registered"])) {
+                $sender->sendMessage((string)$messages["already_registered"]);
+            }
             return false;
         }
 
-        $password = $args[0];
-        $confirmPassword = $args[1];
+        $password = (string)($args[0] ?? '');
+        $confirmPassword = (string)($args[1] ?? '');
 
         if (($message = $this->plugin->getPasswordValidator()->validatePassword($password)) !== null) {
             $sender->sendMessage($message);
@@ -47,7 +57,10 @@ class RegisterCommand extends Command {
         }
 
         if ($password !== $confirmPassword) {
-            $sender->sendMessage($this->plugin->getCustomMessages()->get("messages")["password_mismatch"]);
+            $messages = $this->plugin->getCustomMessages()->get("messages");
+            if (is_array($messages) && isset($messages["password_mismatch"])) {
+                $sender->sendMessage((string)$messages["password_mismatch"]);
+            }
             return false;
         }
 
@@ -59,7 +72,10 @@ class RegisterCommand extends Command {
 
         $this->plugin->getAuthManager()->authenticatePlayer($sender);
 
-        $sender->sendMessage($this->plugin->getCustomMessages()->get("messages")["register_success"]);
+        $messages = $this->plugin->getCustomMessages()->get("messages");
+        if (is_array($messages) && isset($messages["register_success"])) {
+            $sender->sendMessage((string)$messages["register_success"]);
+        }
         return true;
     }
 }
