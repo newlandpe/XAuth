@@ -37,6 +37,6 @@ parameters:
 
     ignoreErrors:
         # Ignore FormAPI related errors
-        - '#Instantiated class jojoe77777\\FormAPI\\CustomForm not found\.#'
-        - '#Call to method .*\(\) on an unknown class jojoe77777\\FormAPI\\CustomForm\.#'
-        - '#Parameter #1 $form of method pocketmine\player\Player::sendForm() expects pocketmine\form\Form, jojoe77777\FormAPI\CustomForm given.#'
+        - '#Instantiated class jojoe77777\FormAPI\CustomForm not found\.#'
+        - '#Call to method .*\(\) on an unknown class jojoe77777\FormAPI\CustomForm\.#'
+        - '#Parameter \#1 \$form of method pocketmine\player\Player::sendForm\(\) expects pocketmine\form\Form, jojoe77777\FormAPI\CustomForm given\.#'
