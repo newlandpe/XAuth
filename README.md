@@ -1,6 +1,6 @@
 # XAuth
 
-[![Poggit CI](https://poggit.pmmp.io/ci.shield/newlandpe/XAuth/XAuth)](https://poggit.pmmp.io/ci/newlandpe/XAuth/XAuth) <!-- Assuming a Poggit CI for this fork -->
+[![Poggit CI](https://poggit.pmmp.io/ci.shield/newlandpe/XAuth/XAuth)](https://poggit.pmmp.io/ci/newlandpe/XAuth/XAuth)
 
 A simple, secure, and extensible authentication plugin for PocketMine-MP, modernized for 2FA integration. This plugin is a fork of LuthMC's XAuth, aiming to provide enhanced security features and maintainability.
 
