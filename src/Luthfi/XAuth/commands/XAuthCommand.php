@@ -33,7 +33,7 @@ class XAuthCommand extends Command {
             return false;
         }
 
-        $subCommand = strtolower((string)(array_shift($args) ?? ''));
+        $subCommand = strtolower((string)array_shift($args));
 
         switch ($subCommand) {
             case "lock":
@@ -107,7 +107,7 @@ class XAuthCommand extends Command {
 
                 $messages = (array)$this->plugin->getCustomMessages()->get("messages");
                 if (isset($messages["xauth_player_lookup_header"])) {
-                    $sender->sendMessage(str_replace('{player_name}', $playerName, (string)($messages["xauth_player_lookup_header"] ?? '')));
+                    $sender->sendMessage(str_replace('{player_name}', $playerName, (string)$messages["xauth_player_lookup_header"]));
                     $sender->sendMessage(str_replace('{date}', (isset($playerData["registered_at"]) ? date("Y-m-d H:i:s", (int)$playerData["registered_at"]) : "N/A"), (string)($messages["xauth_registered"] ?? '')));
                     $sender->sendMessage(str_replace('{ip}', (isset($playerData["registration_ip"]) ? (string)$playerData["registration_ip"] : "N/A"), (string)($messages["xauth_registration_ip"] ?? '')));
                     $sender->sendMessage(str_replace('{ip}', (string)($playerData["ip"] ?? "N/A"), (string)($messages["xauth_last_login_ip"] ?? '')));
@@ -150,7 +150,7 @@ class XAuthCommand extends Command {
                 $this->plugin->getDataProvider()->changePassword($offlinePlayer, $newHashedPassword);
                 $messages = (array)$this->plugin->getCustomMessages()->get("messages");
                 if (isset($messages["set_password_success"])) {
-                    $sender->sendMessage((string)$messages["set_password_success"] ?? "");
+                    $sender->sendMessage((string)$messages["set_password_success"]);
                 }
                 break;
             case "unregister":
