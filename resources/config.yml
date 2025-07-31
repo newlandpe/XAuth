@@ -1,13 +1,45 @@
-#  XAuth Configuration
+# Configuration for XAuth
 
-# If enabled, the player will be auto-logged in based on their IP address from the last session.
-auto-login: true
+# Available languages: en
+language: en
 
-# Enable or disable the title messages
+# Enable titles on join
 enable_titles: true
 
-# Available language: "en", "id"
-language: "en"
+# Auto-login on same IP
+auto-login: true
 
-# DON'T CHANGE THIS!
+# Password complexity requirements
+password_complexity:
+  min_length: 8
+  require_uppercase: true
+  require_lowercase: true
+  require_number: true
+  require_symbol: false
+
+forms:
+  enabled: false
+  kick-on-close: false # Kick player if they close the auth form without logging in
+  register:
+    rules_toggle:
+      enabled: true
+
+# Database configuration
+database:
+  # Available providers: yaml, json, sqlite, mysql
+  provider: yaml
+  mysql:
+    host: 127.0.0.1
+    port: 3306
+    user: root
+    password: ""
+    database: xauth
+
+# Brute-force protection settings
+bruteforce_protection:
+  enabled: true
+  max_attempts: 5
+  block_time_minutes: 10
+
+# Do not change this
 config-version: 1.0

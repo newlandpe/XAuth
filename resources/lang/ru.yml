@@ -1,0 +1,81 @@
+messages:
+  register_prompt: "Пожалуйста, зарегистрируйтесь с помощью /register <пароль> <подтвердите_пароль>"
+  register_success: "Вы успешно зарегистрировались!"
+  login_prompt: "Пожалуйста, войдите с помощью /login <пароль>"
+  login_success: "Вы успешно вошли!"
+  command_not_allowed: "§cВы должны войти, чтобы использовать эту команду."
+  chat_not_allowed: "§cВы должны войти, чтобы общаться в чате."
+  incorrect_password: "§cНеверный пароль. Пожалуйста, попробуйте ещё раз."
+  not_registered: "§cВы не зарегистрированы. Пожалуйста, используйте /register <пароль> для регистрации."
+  already_registered: "§cВы уже зарегистрированы. Пожалуйста, используйте /login <пароль> для входа."
+  password_too_short: "§cВаш пароль слишком короткий. Он должен содержать не менее 6 символов."
+  password_mismatch: "§cПароли не совпадают."
+  password_no_uppercase: "§cПароль должен содержать хотя бы одну заглавную букву."
+  password_no_lowercase: "§cПароль должен содержать хотя бы одну строчную букву."
+  password_no_number: "§cПароль должен содержать хотя бы одну цифру."
+  password_no_symbol: "§cПароль должен содержать хотя бы один специальный символ."
+  xauth_setpassword_usage: "§cИспользование: /xauth setpassword <игрок> <пароль>"
+  xauth_unregister_usage: "§cИспользование: /xauth unregister <игрок>"
+  xauth_reload_success: "§aКонфигурация XAuth перезагружена."
+  xauth_lookup_usage: "§cИспользование: /xauth lookup <игрок>"
+  xauth_player_lookup_header: "§a--- Поиск игрока: {player_name} ---"
+  xauth_registered: "§aЗарегистрирован: {date}"
+  xauth_registration_ip: "§aIP регистрации: {ip}"
+  xauth_last_login_ip: "§aIP последнего входа: {ip}"
+  xauth_last_login: "§aПоследний вход: {date}"
+  xauth_locked: "§aЗаблокирован: {status}"
+  xauth_lookup_footer: "§a-----------------------------------"
+  xauth_lock_usage: "§cИспользование: /xauth lock <игрок>"
+  xauth_player_locked: "§aИгрок '{player_name}' был заблокирован."
+  xauth_unlock_usage: "§cИспользование: /xauth unlock <игрок>"
+  xauth_player_unlocked: "§aИгрок '{player_name}' был разблокирован."
+  xauth_unknown_subcommand: "§cНеизвестная подкоманда. Используйте /xauth help для списка команд."
+  command_only_in_game: "§cЭту команду можно использовать только в игре."
+  account_locked_by_admin: "§cВаш аккаунт был заблокирован администратором."
+  login_usage: "§cИспользование: /login <пароль>"
+  register_usage: "§cИспользование: /register <пароль> <подтвердите_пароль>"
+  change_password_success: "§aВаш пароль успешно изменён."
+  unregister_success: "§aАккаунт игрока успешно удалён."
+  set_password_success: "§aПароль игрока успешно установлен."
+  player_not_registered: "§cИгрок не зарегистрирован."
+  login_attempts_exceeded: "§cВы превысили количество попыток входа. Пожалуйста, попробуйте еще раз через {minutes} минут."
+
+forms:
+  login:
+    title: "Вход"
+    content: "С возвращением! Пожалуйста, введите ваш пароль для продолжения."
+    password_label: "Пароль"
+    password_placeholder: "Ваш секретный пароль"
+  register:
+    title: "Регистрация"
+    content: "Добро пожаловать! Пожалуйста, установите пароль для защиты вашего аккаунта."
+    password_label: "Пароль"
+    password_placeholder: "Выберите надёжный пароль"
+    confirm_password_label: "Подтвердите пароль"
+    confirm_password_placeholder: "Введите ваш пароль ещё раз"
+    rules_toggle_label: "Я прочитал(а) и согласен(на) с правилами сервера."
+    rules_error_message: "§cВы должны согласиться с правилами для регистрации."
+  changepassword:
+    title: "Смена пароля"
+    content: ""
+    old_password_label: "Старый пароль"
+    new_password_label: "Новый пароль"
+    confirm_new_password_label: "Подтвердите новый пароль"
+
+titles:
+  register_prompt:
+    title: "Зарегистрируйтесь сейчас"
+    subtitle: "Используйте /register для регистрации вашего аккаунта"
+    interval: 2
+  login_prompt:
+    title: "Войдите"
+    subtitle: "Используйте /login для входа в ваш аккаунт"
+    interval: 2
+  register_success:
+    title: "Регистрация завершена!"
+    subtitle: "Добро пожаловать на сервер!"
+    interval: 2
+  login_success:
+    title: "Вход выполнен успешно!"
+    subtitle: "Приятного времяпровождения!"
+    interval: 2

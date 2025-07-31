@@ -1,26 +1,38 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Luthfi\XAuth;
 
-use pocketmine\plugin\PluginBase;
+use Luthfi\XAuth\commands\LoginCommand;
+use Luthfi\XAuth\commands\RegisterCommand;
+use Luthfi\XAuth\commands\ResetPasswordCommand;
+use Luthfi\XAuth\commands\XAuthCommand;
+use Luthfi\XAuth\database\DataProviderFactory;
+use Luthfi\XAuth\database\DataProviderInterface;
 use pocketmine\event\Listener;
 use pocketmine\event\player\PlayerJoinEvent;
 use pocketmine\player\Player;
+use pocketmine\plugin\PluginBase;
 use pocketmine\utils\Config;
-use Luthfi\XAuth\commands\RegisterCommand;
-use Luthfi\XAuth\commands\LoginCommand;
-use Luthfi\XAuth\commands\ResetPasswordCommand;
 
 class Main extends PluginBase implements Listener {
 
-    private Config $playerData;
+    private DataProviderInterface $dataProvider;
     private Config $configData;
     private Config $languageMessages;
+    private AuthManager $authManager;
 
     public function onEnable(): void {
+        $this->authManager = new AuthManager();
+        $this->getServer()->getPluginManager()->registerEvents(new EventListener($this, $this->authManager), $this);
         $this->getServer()->getPluginManager()->registerEvents($this, $this);
-        $this->playerData = new Config($this->getDataFolder() . "players.yml", Config::YAML);
         $this->saveDefaultConfig();
+        $this->saveResource("lang/en.yml");
+        $this->saveResource("lang/id.yml");
+        $this->saveResource("lang/ru.yml");
+        $this->saveResource("lang/uk.yml");
+        $this->dataProvider = DataProviderFactory::create($this);
         $this->configData = $this->getConfig();
         $language = $this->configData->get("language", "en");
         $this->languageMessages = new Config($this->getDataFolder() . "lang/" . $language . ".yml", Config::YAML);
@@ -28,17 +40,31 @@ class Main extends PluginBase implements Listener {
         $this->getServer()->getCommandMap()->register("register", new RegisterCommand($this));
         $this->getServer()->getCommandMap()->register("login", new LoginCommand($this));
         $this->getServer()->getCommandMap()->register("resetpassword", new ResetPasswordCommand($this));
+        $this->getServer()->getCommandMap()->register("xauth", new XAuthCommand($this));
     }
 
     public function onJoin(PlayerJoinEvent $event): void {
         $player = $event->getPlayer();
-        $name = strtolower($player->getName());
 
-        if ($this->playerData->exists($name)) {
-            $ip = $this->playerData->get($name)["ip"];
+        if ($this->formManager !== null) {
+            $playerData = $this->dataProvider->getPlayer($player);
+            if ($playerData !== null) {
+                $this->formManager->sendLoginForm($player);
+            } else {
+                $this->formManager->sendRegisterForm($player);
+            }
+            return;
+        }
+
+        $playerData = $this->dataProvider->getPlayer($player);
+
+        if ($playerData !== null) {
+            $ip = $playerData["ip"];
             $currentIp = $player->getNetworkSession()->getIp();
 
             if ($this->configData->get("auto-login") && $ip === $currentIp) {
+                $this->authManager->authenticatePlayer($player);
+                (new PlayerLoginEvent($player))->call();
                 $player->sendMessage($this->languageMessages->get("messages")["login_success"]);
                 $this->sendTitleMessage($player, "login_success");
             } else {
@@ -85,11 +111,35 @@ class Main extends PluginBase implements Listener {
         }
     }
 
-    public function getPlayerData(): Config {
-        return $this->playerData;
+    public function getAuthManager(): AuthManager {
+        return $this->authManager;
+    }
+
+    public function getDataProvider(): DataProviderInterface {
+        return $this->dataProvider;
     }
 
     public function getCustomMessages(): Config {
         return $this->languageMessages;
+    }
+
+    public function getPasswordValidator(): PasswordValidator {
+        return $this->passwordValidator;
+    }
+
+    public function getFormManager(): ?FormManager {
+        return $this->formManager;
+    }
+
+    public function onDisable(): void {
+        $this->dataProvider->close();
+    }
+
+    public function reloadConfig(): void {
+        parent::reloadConfig();
+        $this->configData = $this->getConfig();
+        $language = $this->configData->get("language", "en");
+        $this->languageMessages = new Config($this->getDataFolder() . "lang/" . $language . ".yml", Config::YAML);
+        $this->getLogger()->info("XAuth configuration and language messages reloaded.");
     }
 }

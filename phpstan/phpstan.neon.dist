@@ -1,0 +1,36 @@
+parameters:
+    level: max
+    paths:
+        - ../src
+    excludePaths:
+        - ../tests
+    reportUnmatchedIgnoredErrors: true
+
+    # Typing and strictness
+    checkTooWideReturnTypesInProtectedAndPublicMethods: true
+    checkUninitializedProperties: true
+    checkDynamicProperties: true
+    inferPrivatePropertyTypeFromConstructor: true
+    treatPhpDocTypesAsCertain: true
+
+    # Signature and type checks
+    checkFunctionNameCase: true
+    checkInternalClassCaseSensitivity: true
+    checkExplicitMixedMissingReturn: true
+    checkBenevolentUnionTypes: true
+    reportMaybesInMethodSignatures: true
+    reportMaybesInPropertyPhpDocTypes: true
+    reportStaticMethodSignatures: true
+
+    # PHPDoc checks
+    reportWrongPhpDocTypeInVarTag: true
+    reportAlwaysTrueInLastCondition: true
+    reportPossiblyNonexistentGeneralArrayOffset: true
+    reportPossiblyNonexistentConstantArrayOffset: true
+
+    # Purity assumptions
+    rememberPossiblyImpureFunctionValues: false
+
+    # Scope pollution control
+    polluteScopeWithLoopInitialAssignments: false
+    polluteScopeWithAlwaysIterableForeach: false
