@@ -39,6 +39,7 @@ messages:
   set_password_success: "§aKata sandi pemain telah berhasil diatur."
   player_not_registered: "§cPemain tidak terdaftar."
   login_attempts_exceeded: "§cAnda telah melebihi jumlah percobaan login. Silakan coba lagi dalam {minutes} menit."
+  unexpected_error: "§cTerjadi kesalahan tak terduga. Silakan coba lagi."
 
 forms:
   login:

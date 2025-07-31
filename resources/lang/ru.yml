@@ -39,6 +39,7 @@ messages:
   set_password_success: "§aПароль игрока успешно установлен."
   player_not_registered: "§cИгрок не зарегистрирован."
   login_attempts_exceeded: "§cВы превысили количество попыток входа. Пожалуйста, попробуйте еще раз через {minutes} минут."
+  unexpected_error: "§cПроизошла непредвиденная ошибка. Пожалуйста, попробуйте еще раз."
 
 forms:
   login:
