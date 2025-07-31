@@ -10,20 +10,6 @@ use Luthfi\XAuth\commands\ResetPasswordCommand;
 use Luthfi\XAuth\commands\XAuthCommand;
 use Luthfi\XAuth\database\DataProviderFactory;
 use Luthfi\XAuth\database\DataProviderInterface;
-use pocketmine\event\Listener;
-use pocketmine\event\player\PlayerJoinEvent;
-use pocketmine\player\Player;
-use pocketmine\plugin\PluginBase;
-use pocketmine\utils\Config;
-
-class Main extends PluginBase implements Listener {
-
-    use Luthfi\XAuth\commands\LoginCommand;
-use Luthfi\XAuth\commands\RegisterCommand;
-use Luthfi\XAuth\commands\ResetPasswordCommand;
-use Luthfi\XAuth\commands\XAuthCommand;
-use Luthfi\XAuth\database\DataProviderFactory;
-use Luthfi\XAuth\database\DataProviderInterface;
 use Luthfi\XAuth\event\PlayerLoginEvent;
 use pocketmine\event\Listener;
 use pocketmine\event\player\PlayerJoinEvent;
