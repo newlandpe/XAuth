@@ -39,8 +39,8 @@ class EventListener implements Listener {
         $allowedCommands = ['/login', '/register'];
 
         if (!$this->authManager->isPlayerAuthenticated($player) && !in_array($command, $allowedCommands, true)) {
-            $messages = $this->plugin->getCustomMessages()->get("messages");
-            if (is_array($messages) && isset($messages["command_not_allowed"])) {
+            $messages = (array)$this->plugin->getCustomMessages()->get("messages");
+            if (isset($messages["command_not_allowed"])) {
                 $player->sendMessage((string)$messages["command_not_allowed"]);
             }
             $event->cancel();
@@ -49,8 +49,8 @@ class EventListener implements Listener {
 
     public function onPlayerChat(PlayerChatEvent $event): void {
         if (!$this->authManager->isPlayerAuthenticated($event->getPlayer())) {
-            $messages = $this->plugin->getCustomMessages()->get("messages");
-            if (is_array($messages) && isset($messages["chat_not_allowed"])) {
+            $messages = (array)$this->plugin->getCustomMessages()->get("messages");
+            if (isset($messages["chat_not_allowed"])) {
                 $event->getPlayer()->sendMessage((string)$messages["chat_not_allowed"]);
             }
             $event->cancel();

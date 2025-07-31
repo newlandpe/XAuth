@@ -22,8 +22,8 @@ class RegisterCommand extends Command {
 
     public function execute(CommandSender $sender, string $label, array $args): bool {
         if (!$sender instanceof Player) {
-            $messages = $this->plugin->getCustomMessages()->get("messages");
-            if (is_array($messages) && isset($messages["command_only_in_game"])) {
+            $messages = (array)$this->plugin->getCustomMessages()->get("messages");
+            if (isset($messages["command_only_in_game"])) {
                 $sender->sendMessage((string)$messages["command_only_in_game"]);
             }
             return false;
@@ -31,8 +31,8 @@ class RegisterCommand extends Command {
 
         $name = strtolower($sender->getName());
         if (count($args) !== 2) {
-            $messages = $this->plugin->getCustomMessages()->get("messages");
-            if (is_array($messages) && isset($messages["register_usage"])) {
+            $messages = (array)$this->plugin->getCustomMessages()->get("messages");
+            if (isset($messages["register_usage"])) {
                 $sender->sendMessage((string)$messages["register_usage"]);
             }
             return false;
@@ -41,8 +41,8 @@ class RegisterCommand extends Command {
         $playerData = $this->plugin->getDataProvider()->getPlayer($sender);
 
         if ($playerData !== null) {
-            $messages = $this->plugin->getCustomMessages()->get("messages");
-            if (is_array($messages) && isset($messages["already_registered"])) {
+            $messages = (array)$this->plugin->getCustomMessages()->get("messages");
+            if (isset($messages["already_registered"])) {
                 $sender->sendMessage((string)$messages["already_registered"]);
             }
             return false;
@@ -57,8 +57,8 @@ class RegisterCommand extends Command {
         }
 
         if ($password !== $confirmPassword) {
-            $messages = $this->plugin->getCustomMessages()->get("messages");
-            if (is_array($messages) && isset($messages["password_mismatch"])) {
+            $messages = (array)$this->plugin->getCustomMessages()->get("messages");
+            if (isset($messages["password_mismatch"])) {
                 $sender->sendMessage((string)$messages["password_mismatch"]);
             }
             return false;
@@ -72,8 +72,8 @@ class RegisterCommand extends Command {
 
         $this->plugin->getAuthManager()->authenticatePlayer($sender);
 
-        $messages = $this->plugin->getCustomMessages()->get("messages");
-        if (is_array($messages) && isset($messages["register_success"])) {
+        $messages = (array)$this->plugin->getCustomMessages()->get("messages");
+        if (isset($messages["register_success"])) {
             $sender->sendMessage((string)$messages["register_success"]);
         }
         return true;

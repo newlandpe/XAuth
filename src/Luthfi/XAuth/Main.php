@@ -73,23 +73,23 @@ class Main extends PluginBase implements Listener {
             if ((bool)($this->configData->get("auto-login") ?? false) && $ip === $currentIp) {
                 $this->authManager->authenticatePlayer($player);
                 (new PlayerLoginEvent($player))->call();
-                $message = (string)($this->languageMessages->get("messages")["login_success"] ?? "");
+                $message = (string)(((array)$this->languageMessages->get("messages"))["login_success"] ?? "");
                 $player->sendMessage($message);
                 $this->sendTitleMessage($player, "login_success");
             } else {
-                $message = (string)($this->languageMessages->get("messages")["login_prompt"] ?? "");
+                $message = (string)(((array)$this->languageMessages->get("messages"))["login_prompt"] ?? "");
                 $player->sendMessage($message);
                 $this->sendTitleMessage($player, "login_prompt");
             }
         } else {
-            $message = (string)($this->languageMessages->get("messages")["register_prompt"] ?? "");
+            $message = (string)(((array)$this->languageMessages->get("messages"))["register_prompt"] ?? "");
             $player->sendMessage($message);
             $this->sendTitleMessage($player, "register_prompt");
         }
     }
 
     private function checkConfigVersion(): void {
-        $currentVersion = (float)($this->configData->get("config-version", 1.0) ?? 1.0);
+        $currentVersion = (float)($this->configData->get("config-version") ?? 1.0);
         if ($currentVersion < 1.0) {
             $this->getLogger()->warning("Your config.yml is outdated! Please update it to the latest version.");
         }
@@ -97,8 +97,8 @@ class Main extends PluginBase implements Listener {
 
     private function sendTitleMessage(Player $player, string $messageKey): void {
         if ((bool)($this->configData->get("enable_titles") ?? false)) {
-            $titlesConfig = $this->languageMessages->get("titles");
-            if (is_array($titlesConfig) && isset($titlesConfig[$messageKey])) {
+            $titlesConfig = (array)($this->languageMessages->get("titles") ?? []);
+            if (isset($titlesConfig[$messageKey])) {
                 $titleConfig = $titlesConfig[$messageKey];
                 $title = (string)($titleConfig["title"] ?? "");
                 $subtitle = (string)($titleConfig["subtitle"] ?? "");

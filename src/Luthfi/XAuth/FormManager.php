@@ -19,10 +19,7 @@ class FormManager {
     }
 
     public function sendLoginForm(Player $player): void {
-        $bruteforceConfig = $this->plugin->getConfig()->get('bruteforce_protection');
-        if (!is_array($bruteforceConfig)) {
-            $bruteforceConfig = [];
-        }
+        $bruteforceConfig = (array)$this->plugin->getConfig()->get('bruteforce_protection');
 
         $enabled = (bool)($bruteforceConfig['enabled'] ?? false);
         $maxAttempts = (int)($bruteforceConfig['max_attempts'] ?? 0);
@@ -30,7 +27,7 @@ class FormManager {
 
         if ($enabled && $this->plugin->getAuthManager()->isPlayerBlocked($player, $maxAttempts, $blockTimeMinutes)) {
             $remainingMinutes = $this->plugin->getAuthManager()->getRemainingBlockTime($player, $blockTimeMinutes);
-            $message = (string)($this->plugin->getCustomMessages()->get("messages")["login_attempts_exceeded"] ?? "");
+            $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["login_attempts_exceeded"] ?? "");
             $player->sendMessage(str_replace('{minutes}', (string)$remainingMinutes, $message));
             return;
         }
@@ -55,7 +52,7 @@ class FormManager {
 
             if (!password_verify($password, (string)($playerData["password"] ?? ''))) {
                 $this->plugin->getAuthManager()->incrementLoginAttempts($player);
-                $message = (string)($this->plugin->getCustomMessages()->get("messages")["incorrect_password"] ?? "");
+                $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["incorrect_password"] ?? "");
                 $player->sendMessage($message);
                 $this->sendLoginForm($player); // Resend the form
                 return;
@@ -64,7 +61,7 @@ class FormManager {
             $this->plugin->getDataProvider()->updatePlayerIp($player);
             $this->plugin->getAuthManager()->authenticatePlayer($player);
             (new PlayerLoginEvent($player))->call();
-            $message = (string)($this->plugin->getCustomMessages()->get("messages")["login_success"] ?? "");
+            $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["login_success"] ?? "");
             $player->sendMessage($message);
         });
 
@@ -83,14 +80,14 @@ class FormManager {
             $confirmPassword = (string)($data[1] ?? '');
 
             if (strlen($password) < 6) {
-                $message = (string)($this->plugin->getCustomMessages()->get("messages")["password_too_short"] ?? "");
+                $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["password_too_short"] ?? "");
                 $player->sendMessage($message);
                 $this->sendRegisterForm($player);
                 return;
             }
 
             if ($password !== $confirmPassword) {
-                $message = (string)($this->plugin->getCustomMessages()->get("messages")["password_mismatch"] ?? "");
+                $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["password_mismatch"] ?? "");
                 $player->sendMessage($message);
                 $this->sendRegisterForm($player);
                 return;
@@ -100,7 +97,7 @@ class FormManager {
             $this->plugin->getDataProvider()->registerPlayer($player, $hashedPassword);
             (new PlayerRegisterEvent($player))->call();
             $this->plugin->getAuthManager()->authenticatePlayer($player);
-            $message = (string)($this->plugin->getCustomMessages()->get("messages")["register_success"] ?? "");
+            $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["register_success"] ?? "");
             $player->sendMessage($message);
         });
 
@@ -126,7 +123,7 @@ class FormManager {
             }
 
             if (!password_verify($oldPassword, (string)($playerData["password"] ?? ''))) {
-                $message = (string)($this->plugin->getCustomMessages()->get("messages")["incorrect_password"] ?? "");
+                $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["incorrect_password"] ?? "");
                 $player->sendMessage($message);
                 $this->sendChangePasswordForm($player);
                 return;
@@ -139,7 +136,7 @@ class FormManager {
             }
 
             if ($newPassword !== $confirmNewPassword) {
-                $message = (string)($this->plugin->getCustomMessages()->get("messages")["password_mismatch"] ?? "");
+                $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["password_mismatch"] ?? "");
                 $player->sendMessage($message);
                 $this->sendChangePasswordForm($player);
                 return;
@@ -148,13 +145,13 @@ class FormManager {
             $newHashedPassword = password_hash($newPassword, PASSWORD_BCRYPT);
             $this->plugin->getDataProvider()->changePassword($player, $newHashedPassword);
             (new PlayerChangePasswordEvent($player))->call();
-            $message = (string)($this->plugin->getCustomMessages()->get("messages")["change_password_success"] ?? "");
+            $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["change_password_success"] ?? "");
             $player->sendMessage($message);
         });
 
         $lang = $this->plugin->getCustomMessages();
-        $formsConfig = is_array($lang) ? ($lang->get("forms") ?? []) : [];
-        $changepasswordConfig = is_array($formsConfig) ? ($formsConfig["changepassword"] ?? []) : [];
+        $formsConfig = (array)($lang->get("forms") ?? []);
+        $changepasswordConfig = (array)($formsConfig["changepassword"] ?? []);
 
         $title = (string)($changepasswordConfig["title"] ?? "");
         $content = (string)($changepasswordConfig["content"] ?? "");

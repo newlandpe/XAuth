@@ -26,8 +26,8 @@ class XAuthCommand extends Command {
         }
 
         if (count($args) < 1) {
-            $messages = $this->plugin->getCustomMessages()->get("messages");
-            if (is_array($messages) && isset($messages["xauth_usage"])) {
+            $messages = (array)$this->plugin->getCustomMessages()->get("messages");
+            if (isset($messages["xauth_usage"])) {
                 $sender->sendMessage((string)$messages["xauth_usage"]);
             }
             return false;
@@ -38,8 +38,8 @@ class XAuthCommand extends Command {
         switch ($subCommand) {
             case "lock":
                 if (count($args) !== 1) {
-                    $messages = $this->plugin->getCustomMessages()->get("messages");
-                    if (is_array($messages) && isset($messages["xauth_lock_usage"])) {
+                    $messages = (array)$this->plugin->getCustomMessages()->get("messages");
+                    if (isset($messages["xauth_lock_usage"])) {
                         $sender->sendMessage((string)$messages["xauth_lock_usage"]);
                     }
                     return false;
@@ -47,23 +47,23 @@ class XAuthCommand extends Command {
 
                 $playerName = (string)($args[0] ?? '');
                 if (!$this->plugin->getDataProvider()->isPlayerRegistered($playerName)) {
-                    $messages = $this->plugin->getCustomMessages()->get("messages");
-                    if (is_array($messages) && isset($messages["player_not_registered"])) {
+                    $messages = (array)$this->plugin->getCustomMessages()->get("messages");
+                    if (isset($messages["player_not_registered"])) {
                         $sender->sendMessage(str_replace('{player_name}', $playerName, (string)$messages["player_not_registered"]));
                     }
                     return false;
                 }
 
                 $this->plugin->getDataProvider()->setPlayerLocked($playerName, true);
-                $messages = $this->plugin->getCustomMessages()->get("messages");
-                if (is_array($messages) && isset($messages["xauth_player_locked"])) {
+                $messages = (array)$this->plugin->getCustomMessages()->get("messages");
+                if (isset($messages["xauth_player_locked"])) {
                     $sender->sendMessage(str_replace('{player_name}', $playerName, (string)$messages["xauth_player_locked"]));
                 }
                 break;
             case "unlock":
                 if (count($args) !== 1) {
-                    $messages = $this->plugin->getCustomMessages()->get("messages");
-                    if (is_array($messages) && isset($messages["xauth_unlock_usage"])) {
+                    $messages = (array)$this->plugin->getCustomMessages()->get("messages");
+                    if (isset($messages["xauth_unlock_usage"])) {
                         $sender->sendMessage((string)$messages["xauth_unlock_usage"]);
                     }
                     return false;
@@ -71,23 +71,23 @@ class XAuthCommand extends Command {
 
                 $playerName = (string)($args[0] ?? '');
                 if (!$this->plugin->getDataProvider()->isPlayerRegistered($playerName)) {
-                    $messages = $this->plugin->getCustomMessages()->get("messages");
-                    if (is_array($messages) && isset($messages["player_not_registered"])) {
+                    $messages = (array)$this->plugin->getCustomMessages()->get("messages");
+                    if (isset($messages["player_not_registered"])) {
                         $sender->sendMessage(str_replace('{player_name}', $playerName, (string)$messages["player_not_registered"]));
                     }
                     return false;
                 }
 
                 $this->plugin->getDataProvider()->setPlayerLocked($playerName, false);
-                $messages = $this->plugin->getCustomMessages()->get("messages");
-                if (is_array($messages) && isset($messages["xauth_player_unlocked"])) {
+                $messages = (array)$this->plugin->getCustomMessages()->get("messages");
+                if (isset($messages["xauth_player_unlocked"])) {
                     $sender->sendMessage(str_replace('{player_name}', $playerName, (string)$messages["xauth_player_unlocked"]));
                 }
                 break;
             case "lookup":
                 if (count($args) !== 1) {
-                    $messages = $this->plugin->getCustomMessages()->get("messages");
-                    if (is_array($messages) && isset($messages["xauth_lookup_usage"])) {
+                    $messages = (array)$this->plugin->getCustomMessages()->get("messages");
+                    if (isset($messages["xauth_lookup_usage"])) {
                         $sender->sendMessage((string)$messages["xauth_lookup_usage"]);
                     }
                     return false;
@@ -98,15 +98,15 @@ class XAuthCommand extends Command {
                 $playerData = $this->plugin->getDataProvider()->getPlayer($offlinePlayer);
 
                 if ($playerData === null) {
-                    $messages = $this->plugin->getCustomMessages()->get("messages");
-                    if (is_array($messages) && isset($messages["player_not_registered"])) {
+                    $messages = (array)$this->plugin->getCustomMessages()->get("messages");
+                    if (isset($messages["player_not_registered"])) {
                         $sender->sendMessage(str_replace('{player_name}', $playerName, (string)$messages["player_not_registered"]));
                     }
                     return false;
                 }
 
-                $messages = $this->plugin->getCustomMessages()->get("messages");
-                if (is_array($messages)) {
+                $messages = (array)$this->plugin->getCustomMessages()->get("messages");
+                if (isset($messages["xauth_player_lookup_header"])) {
                     $sender->sendMessage(str_replace('{player_name}', $playerName, (string)($messages["xauth_player_lookup_header"] ?? '')));
                     $sender->sendMessage(str_replace('{date}', (isset($playerData["registered_at"]) ? date("Y-m-d H:i:s", (int)$playerData["registered_at"]) : "N/A"), (string)($messages["xauth_registered"] ?? '')));
                     $sender->sendMessage(str_replace('{ip}', (isset($playerData["registration_ip"]) ? (string)$playerData["registration_ip"] : "N/A"), (string)($messages["xauth_registration_ip"] ?? '')));
@@ -118,8 +118,8 @@ class XAuthCommand extends Command {
                 break;
             case "setpassword":
                 if (count($args) !== 2) {
-                    $messages = $this->plugin->getCustomMessages()->get("messages");
-                    if (is_array($messages) && isset($messages["xauth_setpassword_usage"])) {
+                    $messages = (array)$this->plugin->getCustomMessages()->get("messages");
+                    if (isset($messages["xauth_setpassword_usage"])) {
                         $sender->sendMessage((string)$messages["xauth_setpassword_usage"]);
                     }
                     return false;
@@ -129,8 +129,8 @@ class XAuthCommand extends Command {
                 $newPassword = (string)($args[1] ?? '');
 
                 if (!$this->plugin->getDataProvider()->isPlayerRegistered($playerName)) {
-                    $messages = $this->plugin->getCustomMessages()->get("messages");
-                    if (is_array($messages) && isset($messages["player_not_registered"])) {
+                    $messages = (array)$this->plugin->getCustomMessages()->get("messages");
+                    if (isset($messages["player_not_registered"])) {
                         $sender->sendMessage(str_replace('{player_name}', $playerName, (string)$messages["player_not_registered"]));
                     }
                     return false;
@@ -148,15 +148,15 @@ class XAuthCommand extends Command {
                 $offlinePlayer = Server::getInstance()->getOfflinePlayer($playerName);
                 $newHashedPassword = password_hash($newPassword, PASSWORD_BCRYPT);
                 $this->plugin->getDataProvider()->changePassword($offlinePlayer, $newHashedPassword);
-                $messages = $this->plugin->getCustomMessages()->get("messages");
-                if (is_array($messages) && isset($messages["set_password_success"])) {
-                    $sender->sendMessage((string)$messages["set_password_success"]);
+                $messages = (array)$this->plugin->getCustomMessages()->get("messages");
+                if (isset($messages["set_password_success"])) {
+                    $sender->sendMessage((string)$messages["set_password_success"] ?? "");
                 }
                 break;
             case "unregister":
                 if (count($args) !== 1) {
-                    $messages = $this->plugin->getCustomMessages()->get("messages");
-                    if (is_array($messages) && isset($messages["xauth_unregister_usage"])) {
+                    $messages = (array)$this->plugin->getCustomMessages()->get("messages");
+                    if (isset($messages["xauth_unregister_usage"])) {
                         $sender->sendMessage((string)$messages["xauth_unregister_usage"]);
                     }
                     return false;
@@ -165,8 +165,8 @@ class XAuthCommand extends Command {
                 $playerName = (string)($args[0] ?? '');
 
                 if (!$this->plugin->getDataProvider()->isPlayerRegistered($playerName)) {
-                    $messages = $this->plugin->getCustomMessages()->get("messages");
-                    if (is_array($messages) && isset($messages["player_not_registered"])) {
+                    $messages = (array)$this->plugin->getCustomMessages()->get("messages");
+                    if (isset($messages["player_not_registered"])) {
                         $sender->sendMessage(str_replace('{player_name}', $playerName, (string)$messages["player_not_registered"]));
                     }
                     return false;
@@ -175,21 +175,21 @@ class XAuthCommand extends Command {
                 $offlinePlayer = Server::getInstance()->getOfflinePlayer($playerName);
                 $this->plugin->getDataProvider()->unregisterPlayer($playerName);
                 (new PlayerUnregisterEvent($offlinePlayer))->call();
-                $messages = $this->plugin->getCustomMessages()->get("messages");
-                if (is_array($messages) && isset($messages["unregister_success"])) {
+                $messages = (array)$this->plugin->getCustomMessages()->get("messages");
+                if (isset($messages["unregister_success"])) {
                     $sender->sendMessage((string)$messages["unregister_success"]);
                 }
                 break;
             case "reload":
                 $this->plugin->reloadConfig();
-                $messages = $this->plugin->getCustomMessages()->get("messages");
-                if (is_array($messages) && isset($messages["xauth_reload_success"])) {
+                $messages = (array)$this->plugin->getCustomMessages()->get("messages");
+                if (isset($messages["xauth_reload_success"])) {
                     $sender->sendMessage((string)$messages["xauth_reload_success"]);
                 }
                 break;
             default:
-                $messages = $this->plugin->getCustomMessages()->get("messages");
-                if (is_array($messages) && isset($messages["xauth_unknown_subcommand"])) {
+                $messages = (array)$this->plugin->getCustomMessages()->get("messages");
+                if (isset($messages["xauth_unknown_subcommand"])) {
                     $sender->sendMessage((string)$messages["xauth_unknown_subcommand"]);
                 }
                 break;

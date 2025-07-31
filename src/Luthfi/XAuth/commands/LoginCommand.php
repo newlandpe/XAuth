@@ -22,8 +22,8 @@ class LoginCommand extends Command {
 
     public function execute(CommandSender $sender, string $label, array $args): bool {
         if (!$sender instanceof Player) {
-            $messages = $this->plugin->getCustomMessages()->get("messages");
-            if (is_array($messages) && isset($messages["command_only_in_game"])) {
+            $messages = (array)$this->plugin->getCustomMessages()->get("messages");
+            if (isset($messages["command_only_in_game"])) {
                 $sender->sendMessage((string)$messages["command_only_in_game"]);
             }
             return false;
@@ -31,10 +31,7 @@ class LoginCommand extends Command {
 
         $name = strtolower($sender->getName());
 
-        $bruteforceConfig = $this->plugin->getConfig()->get('bruteforce_protection');
-        if (!is_array($bruteforceConfig)) {
-            $bruteforceConfig = [];
-        }
+        $bruteforceConfig = (array)$this->plugin->getConfig()->get('bruteforce_protection');
 
         $enabled = (bool)($bruteforceConfig['enabled'] ?? false);
         $maxAttempts = (int)($bruteforceConfig['max_attempts'] ?? 0);
@@ -42,14 +39,14 @@ class LoginCommand extends Command {
 
         if ($enabled && $this->plugin->getAuthManager()->isPlayerBlocked($sender, $maxAttempts, $blockTimeMinutes)) {
             $remainingMinutes = $this->plugin->getAuthManager()->getRemainingBlockTime($sender, $blockTimeMinutes);
-            $message = (string)($this->plugin->getCustomMessages()->get("messages")["login_attempts_exceeded"] ?? "");
+            $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["login_attempts_exceeded"] ?? "");
             $sender->sendMessage(str_replace('{minutes}', (string)$remainingMinutes, $message));
             return false;
         }
 
         if (count($args) !== 1) {
-            $messages = $this->plugin->getCustomMessages()->get("messages");
-            if (is_array($messages) && isset($messages["login_usage"])) {
+            $messages = (array)$this->plugin->getCustomMessages()->get("messages");
+            if (isset($messages["login_usage"])) {
                 $sender->sendMessage((string)$messages["login_usage"]);
             }
             return false;
@@ -58,16 +55,16 @@ class LoginCommand extends Command {
         $playerData = $this->plugin->getDataProvider()->getPlayer($sender);
 
         if ($playerData === null) {
-            $messages = $this->plugin->getCustomMessages()->get("messages");
-            if (is_array($messages) && isset($messages["not_registered"])) {
+            $messages = (array)$this->plugin->getCustomMessages()->get("messages");
+            if (isset($messages["not_registered"])) {
                 $sender->sendMessage((string)$messages["not_registered"]);
             }
             return false;
         }
 
         if ($this->plugin->getDataProvider()->isPlayerLocked($sender->getName())) {
-            $messages = $this->plugin->getCustomMessages()->get("messages");
-            if (is_array($messages) && isset($messages["account_locked_by_admin"])) {
+            $messages = (array)$this->plugin->getCustomMessages()->get("messages");
+            if (isset($messages["account_locked_by_admin"])) {
                 $sender->sendMessage((string)$messages["account_locked_by_admin"]);
             }
             return false;
@@ -78,8 +75,8 @@ class LoginCommand extends Command {
 
         if (!password_verify($password, $storedPasswordHash)) {
             $this->plugin->getAuthManager()->incrementLoginAttempts($sender);
-            $messages = $this->plugin->getCustomMessages()->get("messages");
-            if (is_array($messages) && isset($messages["incorrect_password"])) {
+            $messages = (array)$this->plugin->getCustomMessages()->get("messages");
+            if (isset($messages["incorrect_password"])) {
                 $sender->sendMessage((string)$messages["incorrect_password"]);
             }
             return false;
@@ -91,8 +88,8 @@ class LoginCommand extends Command {
 
         (new PlayerLoginEvent($sender))->call();
 
-        $messages = $this->plugin->getCustomMessages()->get("messages");
-        if (is_array($messages) && isset($messages["login_success"])) {
+        $messages = (array)$this->plugin->getCustomMessages()->get("messages");
+        if (isset($messages["login_success"])) {
             $sender->sendMessage((string)$messages["login_success"]);
         }
         return true;
