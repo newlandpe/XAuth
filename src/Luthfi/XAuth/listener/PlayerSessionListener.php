@@ -67,6 +67,13 @@ class PlayerSessionListener implements Listener {
                     if (($sessionData['ip_address'] ?? '') === $currentIp && ($sessionData['expiration_time'] ?? 0) > time()) {
                         $this->plugin->getAuthManager()->authenticatePlayer($player);
                         $this->plugin->getDataProvider()->updateSessionLastActivity($sessionId);
+
+                        $refreshSession = (bool)($this->plugin->getConfig()->getNested('auto-login.refresh_session_on_login') ?? true);
+                        if ($refreshSession) {
+                            $newLifetime = (int)($this->plugin->getConfig()->getNested('auto-login.lifetime_seconds') ?? 2592000);
+                            $this->plugin->getDataProvider()->refreshSession($sessionId, $newLifetime);
+                        }
+
                         $loginEvent = new PlayerLoginEvent($player, true);
                         $loginEvent->call();
 

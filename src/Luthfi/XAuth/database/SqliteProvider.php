@@ -12,8 +12,10 @@ use SQLite3;
 class SqliteProvider implements DataProviderInterface {
 
     private SQLite3 $db;
+    private Main $plugin;
 
     public function __construct(Main $plugin) {
+        $this->plugin = $plugin;
         $this->db = new SQLite3($plugin->getDataFolder() . "players.db");
         $this->db->exec("PRAGMA foreign_keys = ON;");
         $this->db->exec("CREATE TABLE IF NOT EXISTS players (name TEXT PRIMARY KEY, password TEXT, ip TEXT, locked INTEGER DEFAULT 0, registered_at INTEGER, registration_ip TEXT, last_login_at INTEGER, blocked_until INTEGER DEFAULT 0, must_change_password INTEGER DEFAULT 0)");
@@ -218,7 +220,7 @@ class SqliteProvider implements DataProviderInterface {
         if ($result === false) return [];
         $sessions = [];
         while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
-            $sessions[] = $row;
+            $sessions[$row['session_id']] = $row;
         }
         return $sessions;
     }
@@ -241,6 +243,14 @@ class SqliteProvider implements DataProviderInterface {
         $stmt = $this->db->prepare("UPDATE sessions SET last_activity = :current_time WHERE session_id = :session_id");
         if ($stmt === false) return;
         $stmt->bindValue(":current_time", time(), SQLITE3_INTEGER);
+        $stmt->bindValue(":session_id", $sessionId, SQLITE3_TEXT);
+        $stmt->execute();
+    }
+
+    public function refreshSession(string $sessionId, int $newLifetimeSeconds): void {
+        $stmt = $this->db->prepare("UPDATE sessions SET expiration_time = :expiration_time WHERE session_id = :session_id");
+        if ($stmt === false) return;
+        $stmt->bindValue(":expiration_time", time() + $newLifetimeSeconds, SQLITE3_INTEGER);
         $stmt->bindValue(":session_id", $sessionId, SQLITE3_TEXT);
         $stmt->execute();
     }

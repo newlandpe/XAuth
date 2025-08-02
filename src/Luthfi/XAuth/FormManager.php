@@ -91,8 +91,27 @@ class FormManager {
             $autoLoginEnabled = (bool)($this->plugin->getConfig()->getNested('auto-login.enabled') ?? false);
 
             if ($autoLoginEnabled) {
-                $lifetime = (int)($this->plugin->getConfig()->getNested('auto-login.lifetime_seconds') ?? 2592000); // Default to 30 days
-                $this->plugin->getDataProvider()->createSession($player->getName(), $player->getNetworkSession()->getIp(), $lifetime);
+                $sessions = $this->plugin->getDataProvider()->getSessionsByPlayer($player->getName());
+                $ip = $player->getNetworkSession()->getIp();
+                $existingSessionId = null;
+
+                foreach ($sessions as $sessionId => $sessionData) {
+                    if (($sessionData['ip_address'] ?? '') === $ip) {
+                        $existingSessionId = $sessionId;
+                        break;
+                    }
+                }
+
+                $lifetime = (int)($this->plugin->getConfig()->getNested('auto-login.lifetime_seconds') ?? 2592000);
+
+                if ($existingSessionId !== null) {
+                    $refreshSession = (bool)($this->plugin->getConfig()->getNested('auto-login.refresh_session_on_login') ?? true);
+                    if ($refreshSession) {
+                        $this->plugin->getDataProvider()->refreshSession($existingSessionId, $lifetime);
+                    }
+                } else {
+                    $this->plugin->getDataProvider()->createSession($player->getName(), $ip, $lifetime);
+                }
             }
 
             $this->plugin->getDataProvider()->updatePlayerIp($player);

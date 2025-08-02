@@ -33,6 +33,11 @@ class LoginCommand extends Command {
             return false;
         }
 
+        if ($this->plugin->getAuthManager()->isPlayerAuthenticated($sender)) {
+            $sender->sendMessage((string)($messages["already_logged_in"] ?? "§cYou are already logged in."));
+            return false;
+        }
+
         $name = strtolower($sender->getName());
 
         $bruteforceConfig = (array)$this->plugin->getConfig()->get('bruteforce_protection');
@@ -100,8 +105,27 @@ class LoginCommand extends Command {
         $autoLoginEnabled = (bool)($this->plugin->getConfig()->getNested('auto-login.enabled') ?? false);
 
         if ($autoLoginEnabled) {
-            $lifetime = (int)($this->plugin->getConfig()->getNested('auto-login.lifetime_seconds') ?? 2592000); // Default to 30 days
-            $this->plugin->getDataProvider()->createSession($sender->getName(), $sender->getNetworkSession()->getIp(), $lifetime);
+            $sessions = $this->plugin->getDataProvider()->getSessionsByPlayer($sender->getName());
+            $ip = $sender->getNetworkSession()->getIp();
+            $existingSessionId = null;
+
+            foreach ($sessions as $sessionId => $sessionData) {
+                if (($sessionData['ip_address'] ?? '') === $ip) {
+                    $existingSessionId = $sessionId;
+                    break;
+                }
+            }
+
+            $lifetime = (int)($this->plugin->getConfig()->getNested('auto-login.lifetime_seconds') ?? 2592000);
+
+            if ($existingSessionId !== null) {
+                $refreshSession = (bool)($this->plugin->getConfig()->getNested('auto-login.refresh_session_on_login') ?? true);
+                if ($refreshSession) {
+                    $this->plugin->getDataProvider()->refreshSession($existingSessionId, $lifetime);
+                }
+            } else {
+                $this->plugin->getDataProvider()->createSession($sender->getName(), $ip, $lifetime);
+            }
         }
 
         $this->plugin->getDataProvider()->updatePlayerIp($sender);

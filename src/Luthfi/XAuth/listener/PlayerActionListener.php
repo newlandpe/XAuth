@@ -60,21 +60,32 @@ class PlayerActionListener implements Listener {
         }
 
         $commandParts = explode(' ', $event->getCommand());
-        $command = strtolower($commandParts[0] ?? '');
-        $allowedCommands = ['/login', '/register'];
+        $commandMap = $this->plugin->getServer()->getCommandMap();
+        $command = $commandMap->getCommand($commandParts[0]);
 
-        if (!in_array($command, $allowedCommands, true)) {
-            $authEvent = new PlayerAuthActionEvent($player, PlayerAuthActionEvent::ACTION_COMMAND);
-            $authEvent->call();
-            if ($authEvent->isCancelled()) {
+        if ($command !== null) {
+            $allowedCommands = ['login', 'register'];
+            if (in_array($command->getName(), $allowedCommands, true)) {
                 return;
             }
-            $messages = (array)$this->plugin->getCustomMessages()->get("messages");
-            if (isset($messages["command_not_allowed"])) {
-                $player->sendMessage((string)$messages["command_not_allowed"]);
+            foreach ($command->getAliases() as $alias) {
+                if (in_array($alias, $allowedCommands, true)) {
+                    return;
+                }
             }
-            $event->cancel();
         }
+
+        $authEvent = new PlayerAuthActionEvent($player, PlayerAuthActionEvent::ACTION_COMMAND);
+        $authEvent->call();
+        if ($authEvent->isCancelled()) {
+            return;
+        }
+
+        $messages = (array)$this->plugin->getCustomMessages()->get("messages");
+        if (isset($messages["command_not_allowed"])) {
+            $player->sendMessage((string)$messages["command_not_allowed"]);
+        }
+        $event->cancel();
     }
 
     public function onPlayerChat(PlayerChatEvent $event): void {

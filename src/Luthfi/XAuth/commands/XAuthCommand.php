@@ -98,9 +98,9 @@ class XAuthCommand extends Command {
                 if ($autoLoginEnabled) {
                     $sessions = $this->plugin->getDataProvider()->getSessionsByPlayer($playerName);
                     if (!empty($sessions)) {
-                        // getSessionsByPlayer already sorts by login_time DESC
-                        $lastLoginIp = (string)($sessions[0]['ip_address'] ?? "N/A");
-                        $lastLoginTime = (isset($sessions[0]["login_time"]) ? date("Y-m-d H:i:s", (int)$sessions[0]["login_time"]) : "N/A");
+                        $latestSession = current($sessions);
+                        $lastLoginIp = (string)($latestSession['ip_address'] ?? "N/A");
+                        $lastLoginTime = (isset($latestSession["login_time"])) ? date("Y-m-d H:i:s", (int)$latestSession["login_time"]) : "N/A";
                     }
                 } else {
                     // Fallback to player data if auto-login (and thus sessions) is disabled
@@ -297,15 +297,22 @@ class XAuthCommand extends Command {
                             $sender->sendMessage(str_replace("{player_name}", $playerName, (string)($messages["xauth_sessions_no_sessions"] ?? "§eNo active sessions found for {player_name}.")));
                             return false;
                         }
-                        $sender->sendMessage(str_replace(["{player_name}", "{count}"], [$playerName, (string)count($sessions)], (string)($messages["xauth_sessions_list_header"] ?? "§e--- Sessions for {player_name} ({count}) ---")));
-                        foreach ($sessions as $session) {
-                            $sessionId = (string)($session['session_id'] ?? 'N/A');
+
+                        $outputLines = [];
+                        $outputLines[] = str_replace(["{player_name}", "{count}"], [$playerName, (string)count($sessions)], (string)($messages["xauth_sessions_list_header"] ?? "§e--- Sessions for {player_name} ({count}) ---"));
+
+                        foreach ($sessions as $sessionId => $session) {
                             $ipAddress = (string)($session['ip_address'] ?? 'N/A');
                             $loginTime = date("Y-m-d H:i:s", (int)($session['login_time'] ?? 0));
                             $lastActivity = date("Y-m-d H:i:s", (int)($session['last_activity'] ?? 0));
                             $expirationTime = date("Y-m-d H:i:s", (int)($session['expiration_time'] ?? 0));
-                            $sender->sendMessage("§fID: §7" . $sessionId . "§f | IP: §7" . $ipAddress . "§f | Login: §7" . $loginTime . "§f | Last Activity: §7" . $lastActivity . "§f | Expires: §7" . $expirationTime);
+                            $outputLines[] = str_replace(
+                                ['{session_id}', '{ip_address}', '{login_time}', '{last_activity}', '{expiration_time}'],
+                                [$sessionId, $ipAddress, $loginTime, $lastActivity, $expirationTime],
+                                (string)($messages['xauth_sessions_list_entry'] ?? "ID: {session_id} | IP: {ip_address} | Login: {login_time} | Last Activity: {last_activity} | Expires: {expiration_time}")
+                            );
                         }
+                        $sender->sendMessage(implode("\n", $outputLines));
                         break;
                     case "terminate":
                         if (count($args) !== 1) {

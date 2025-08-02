@@ -10,6 +10,7 @@ enable_titles: true
 auto-login:
   enabled: true
   lifetime_seconds: 2592000 # 30 days
+  refresh_session_on_login: true # If true, the session lifetime will be extended on each successful auto-login.
   max_sessions_per_player: 5
   cleanup_interval_minutes: 60 # Run cleanup every hour
 

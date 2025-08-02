@@ -157,8 +157,27 @@ class Main extends PluginBase {
         $autoLoginEnabled = (bool)($this->configData->getNested('auto-login.enabled') ?? false);
 
         if ($autoLoginEnabled) {
-            $lifetime = (int)($this->configData->getNested('auto-login.lifetime_seconds') ?? 2592000); // Default to 30 days
-            $this->getDataProvider()->createSession($player->getName(), $player->getNetworkSession()->getIp(), $lifetime);
+            $sessions = $this->getDataProvider()->getSessionsByPlayer($player->getName());
+            $ip = $player->getNetworkSession()->getIp();
+            $existingSessionId = null;
+
+            foreach ($sessions as $sessionId => $sessionData) {
+                if (($sessionData['ip_address'] ?? '') === $ip) {
+                    $existingSessionId = $sessionId;
+                    break;
+                }
+            }
+
+            $lifetime = (int)($this->configData->getNested('auto-login.lifetime_seconds') ?? 2592000);
+
+            if ($existingSessionId !== null) {
+                $refreshSession = (bool)($this->configData->getNested('auto-login.refresh_session_on_login') ?? true);
+                if ($refreshSession) {
+                    $this->getDataProvider()->refreshSession($existingSessionId, $lifetime);
+                }
+            } else {
+                $this->getDataProvider()->createSession($player->getName(), $ip, $lifetime);
+            }
         }
 
         $player->sendMessage((string)(((array)$this->languageMessages->get("messages"))["login_success"] ?? ""));
@@ -179,6 +198,28 @@ class Main extends PluginBase {
         if (isset($this->kickTasks[$name])) {
             $this->kickTasks[$name]->cancel();
             unset($this->kickTasks[$name]);
+        }
+    }
+
+    public function scheduleKickTask(Player $player): void {
+        $loginTimeout = (int)($this->configData->getNested("session.login-timeout") ?? 30);
+        if ($loginTimeout > 0) {
+            $this->kickTasks[$player->getName()] = $this->getScheduler()->scheduleDelayedTask(new class($this, $player) extends \pocketmine\scheduler\Task {
+                private Main $plugin;
+                private Player $player;
+
+                public function __construct(Main $plugin, Player $player) {
+                    $this->plugin = $plugin;
+                    $this->player = $player;
+                }
+
+                public function onRun(): void {
+                    if ($this->player->isOnline() && !$this->plugin->getAuthManager()->isPlayerAuthenticated($this->player)) {
+                        $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["login_timeout"] ?? "§cYou took too long to log in.");
+                        $this->player->kick($message);
+                    }
+                }
+            }, $loginTimeout * 20); // Convert seconds to ticks
         }
     }
 

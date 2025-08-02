@@ -49,6 +49,8 @@ interface DataProviderInterface {
 
     public function updateSessionLastActivity(string $sessionId): void;
 
+    public function refreshSession(string $sessionId, int $newLifetimeSeconds): void;
+
     public function cleanupExpiredSessions(): void;
 
     public function close(): void;

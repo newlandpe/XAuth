@@ -33,6 +33,11 @@ class RegisterCommand extends Command {
             return false;
         }
 
+        if ($this->plugin->getAuthManager()->isPlayerAuthenticated($sender)) {
+            $sender->sendMessage((string)($messages["already_logged_in"] ?? "§cYou are already logged in."));
+            return false;
+        }
+
         $name = strtolower($sender->getName());
         if (count($args) !== 2) {
             $sender->sendMessage((string)($messages["register_usage"] ?? "§cUsage: /register <password> <confirm_password>"));

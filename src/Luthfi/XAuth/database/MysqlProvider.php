@@ -12,8 +12,10 @@ use pocketmine\player\Player;
 class MysqlProvider implements DataProviderInterface {
 
     private PDO $db;
+    private Main $plugin;
 
     public function __construct(Main $plugin) {
+        $this->plugin = $plugin;
         $config = $plugin->getConfig()->get('database');
         if (!is_array($config)) {
             $config = [];
@@ -206,7 +208,7 @@ class MysqlProvider implements DataProviderInterface {
         $stmt->execute();
         $sessions = [];
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $sessions[] = $row;
+            $sessions[$row['session_id']] = $row;
         }
         return $sessions;
     }
@@ -226,6 +228,13 @@ class MysqlProvider implements DataProviderInterface {
     public function updateSessionLastActivity(string $sessionId): void {
         $stmt = $this->db->prepare("UPDATE sessions SET last_activity = :current_time WHERE session_id = :session_id");
         $stmt->bindValue(":current_time", time(), PDO::PARAM_INT);
+        $stmt->bindValue(":session_id", $sessionId);
+        $stmt->execute();
+    }
+
+    public function refreshSession(string $sessionId, int $newLifetimeSeconds): void {
+        $stmt = $this->db->prepare("UPDATE sessions SET expiration_time = :expiration_time WHERE session_id = :session_id");
+        $stmt->bindValue(":expiration_time", time() + $newLifetimeSeconds, PDO::PARAM_INT);
         $stmt->bindValue(":session_id", $sessionId);
         $stmt->execute();
     }

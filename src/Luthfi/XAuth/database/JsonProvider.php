@@ -13,8 +13,10 @@ class JsonProvider implements DataProviderInterface {
 
     private Config $playerData;
     private Config $sessionData;
+    private Main $plugin;
 
     public function __construct(Main $plugin) {
+        $this->plugin = $plugin;
         $this->playerData = new Config($plugin->getDataFolder() . "players.json", Config::JSON);
         $this->sessionData = new Config($plugin->getDataFolder() . "sessions.json", Config::JSON);
     }
@@ -203,6 +205,15 @@ class JsonProvider implements DataProviderInterface {
         $session = $this->sessionData->get($sessionId);
         if (is_array($session)) {
             $session['last_activity'] = time();
+            $this->sessionData->set($sessionId, $session);
+            $this->sessionData->save();
+        }
+    }
+
+    public function refreshSession(string $sessionId, int $newLifetimeSeconds): void {
+        $session = $this->sessionData->get($sessionId);
+        if (is_array($session)) {
+            $session['expiration_time'] = time() + $newLifetimeSeconds;
             $this->sessionData->set($sessionId, $session);
             $this->sessionData->save();
         }
