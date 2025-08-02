@@ -13,9 +13,15 @@ class PlayerLoginEvent extends PlayerEvent implements Cancellable {
     use CancellableTrait;
 
     private bool $isAuthenticationDelayed = false;
+    private bool $isAutoLogin;
 
-    public function __construct(Player $player) {
+    public function __construct(Player $player, bool $isAutoLogin = false) {
         $this->player = $player;
+        $this->isAutoLogin = $isAutoLogin;
+    }
+
+    public function isAutoLogin(): bool {
+        return $this->isAutoLogin;
     }
 
     public function setAuthenticationDelayed(bool $isDelayed): void {

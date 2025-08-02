@@ -10,14 +10,14 @@ use Luthfi\XAuth\commands\ResetPasswordCommand;
 use Luthfi\XAuth\commands\XAuthCommand;
 use Luthfi\XAuth\database\DataProviderFactory;
 use Luthfi\XAuth\database\DataProviderInterface;
-use Luthfi\XAuth\event\PlayerLoginEvent;
+use Luthfi\XAuth\listener\PlayerActionListener;
+use Luthfi\XAuth\listener\PlayerSessionListener;
 use pocketmine\event\Listener;
-use pocketmine\event\player\PlayerJoinEvent;
 use pocketmine\player\Player;
 use pocketmine\plugin\PluginBase;
 use pocketmine\utils\Config;
 
-class Main extends PluginBase implements Listener {
+class Main extends PluginBase {
 
     private ?DataProviderInterface $dataProvider = null;
     private ?Config $configData = null;
@@ -26,12 +26,21 @@ class Main extends PluginBase implements Listener {
     private ?FormManager $formManager = null;
     private ?PasswordValidator $passwordValidator = null;
 
+    /** @var array<string, \pocketmine\scheduler\TaskHandler> */
+    private array $titleTasks = [];
+
+    /** @var array<string, \pocketmine\scheduler\TaskHandler> */
+    private array $kickTasks = [];
+
+    /** @var array<string, bool> */
+    private array $forcePasswordChange = [];
+
     public function onEnable(): void {
-        $this->authManager = new AuthManager();
+        $this->authManager = new AuthManager($this);
         $this->passwordValidator = new PasswordValidator($this);
         $this->formManager = new FormManager($this);
-        $this->getServer()->getPluginManager()->registerEvents(new EventListener($this, $this->authManager), $this);
-        $this->getServer()->getPluginManager()->registerEvents($this, $this);
+        $this->getServer()->getPluginManager()->registerEvents(new PlayerActionListener($this), $this);
+        $this->getServer()->getPluginManager()->registerEvents(new PlayerSessionListener($this), $this);
         $this->saveDefaultConfig();
         $this->saveResource("lang/en.yml");
         $this->saveResource("lang/id.yml");
@@ -49,62 +58,34 @@ class Main extends PluginBase implements Listener {
         $this->getServer()->getCommandMap()->register("login", new LoginCommand($this));
         $this->getServer()->getCommandMap()->register("resetpassword", new ResetPasswordCommand($this));
         $this->getServer()->getCommandMap()->register("xauth", new XAuthCommand($this));
-    }
 
-    public function onJoin(PlayerJoinEvent $event): void {
-        $player = $event->getPlayer();
+        $autoLoginEnabled = (bool)($this->configData->getNested("auto-login.enabled") ?? false);
 
-        if ($this->formManager !== null) {
-            $playerData = $this->dataProvider->getPlayer($player);
-            if ($playerData !== null) {
-                $this->formManager->sendLoginForm($player);
-            } else {
-                $this->formManager->sendRegisterForm($player);
-            }
-            return;
-        }
+        if ($autoLoginEnabled) {
+            $cleanupInterval = (int)($this->configData->getNested("auto-login.cleanup_interval_minutes") ?? 60);
+            $this->getScheduler()->scheduleRepeatingTask(new class($this) extends \pocketmine\scheduler\Task {
+                private Main $plugin;
 
-        $playerData = $this->dataProvider->getPlayer($player);
-
-        if ($playerData !== null) {
-            $ip = (string)($playerData["ip"] ?? "");
-            $currentIp = $player->getNetworkSession()->getIp();
-
-            if ((bool)($this->configData->get("auto-login") ?? false) && $ip === $currentIp) {
-                $this->authManager->authenticatePlayer($player);
-                $event = new PlayerLoginEvent($player);
-                $event->call();
-
-                if ($event->isAuthenticationDelayed()) {
-                    return;
+                public function __construct(Main $plugin) {
+                    $this->plugin = $plugin;
                 }
 
-                if ($event->isCancelled()) {
-                    return;
+                public function onRun(): void {
+                    $this->plugin->getDataProvider()->cleanupExpiredSessions();
+                    $this->plugin->getLogger()->debug("Cleaned up expired sessions.");
                 }
-                $message = (string)(((array)$this->languageMessages->get("messages"))["login_success"] ?? "");
-                $player->sendMessage($message);
-                $this->sendTitleMessage($player, "login_success");
-            } else {
-                $message = (string)(((array)$this->languageMessages->get("messages"))["login_prompt"] ?? "");
-                $player->sendMessage($message);
-                $this->sendTitleMessage($player, "login_prompt");
-            }
-        } else {
-            $message = (string)(((array)$this->languageMessages->get("messages"))["register_prompt"] ?? "");
-            $player->sendMessage($message);
-            $this->sendTitleMessage($player, "register_prompt");
+            }, $cleanupInterval * 20 * 60); // Convert minutes to ticks (20 ticks per second)
         }
     }
 
     private function checkConfigVersion(): void {
         $currentVersion = (float)($this->configData->get("config-version") ?? 1.0);
         if ($currentVersion < 1.0) {
-            $this->getLogger()->warning("Your config.yml is outdated! Please update it to the latest version.");
+            $this->getLogger()->warning((string)(((array)$this->languageMessages->get("messages"))["config_outdated_warning"] ?? "Your config.yml is outdated! Please update it to the latest version."));
         }
     }
 
-    private function sendTitleMessage(Player $player, string $messageKey): void {
+    public function sendTitleMessage(Player $player, string $messageKey): void {
         if ((bool)($this->configData->get("enable_titles") ?? false)) {
             $titlesConfig = (array)($this->languageMessages->get("titles") ?? []);
             if (isset($titlesConfig[$messageKey])) {
@@ -113,7 +94,7 @@ class Main extends PluginBase implements Listener {
                 $subtitle = (string)($titleConfig["subtitle"] ?? "");
                 $interval = (int)(($titleConfig["interval"] ?? 0) * 20);
 
-                $this->getScheduler()->scheduleRepeatingTask(new class($player, $title, $subtitle) extends \pocketmine\scheduler\Task {
+                $handler = $this->getScheduler()->scheduleRepeatingTask(new class($player, $title, $subtitle) extends \pocketmine\scheduler\Task {
                     private Player $player;
                     private string $title;
                     private string $subtitle;
@@ -130,6 +111,7 @@ class Main extends PluginBase implements Listener {
                         }
                     }
                 }, $interval);
+                $this->titleTasks[$player->getName()] = $handler;
             }
         }
     }
@@ -154,11 +136,50 @@ class Main extends PluginBase implements Listener {
         return $this->formManager;
     }
 
+    public function startForcePasswordChange(Player $player): void {
+        $this->forcePasswordChange[strtolower($player->getName())] = true;
+        $this->formManager->sendForceChangePasswordForm($player);
+    }
+
+    public function stopForcePasswordChange(Player $player): void {
+        unset($this->forcePasswordChange[strtolower($player->getName())]);
+    }
+
+    public function isForcingPasswordChange(Player $player): bool {
+        return isset($this->forcePasswordChange[strtolower($player->getName())]);
+    }
+
     public function forceLogin(Player $player): void {
+        $this->cancelKickTask($player);
+        $this->getDataProvider()->updatePlayerIp($player);
         $this->authManager->authenticatePlayer($player);
-        $message = (string)(((array)$this->languageMessages->get("messages"))["login_success"] ?? "");
-        $player->sendMessage($message);
+
+        $autoLoginEnabled = (bool)($this->configData->getNested('auto-login.enabled') ?? false);
+
+        if ($autoLoginEnabled) {
+            $lifetime = (int)($this->configData->getNested('auto-login.lifetime_seconds') ?? 2592000); // Default to 30 days
+            $this->getDataProvider()->createSession($player->getName(), $player->getNetworkSession()->getIp(), $lifetime);
+        }
+
+        $player->sendMessage((string)(((array)$this->languageMessages->get("messages"))["login_success"] ?? ""));
         $this->sendTitleMessage($player, "login_success");
+        $this->clearTitleTask($player);
+    }
+
+    public function clearTitleTask(Player $player): void {
+        $name = $player->getName();
+        if (isset($this->titleTasks[$name])) {
+            $this->titleTasks[$name]->cancel();
+            unset($this->titleTasks[$name]);
+        }
+    }
+
+    public function cancelKickTask(Player $player): void {
+        $name = $player->getName();
+        if (isset($this->kickTasks[$name])) {
+            $this->kickTasks[$name]->cancel();
+            unset($this->kickTasks[$name]);
+        }
     }
 
     public function onDisable(): void {

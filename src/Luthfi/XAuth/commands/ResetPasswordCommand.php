@@ -15,17 +15,21 @@ class ResetPasswordCommand extends Command {
     private Main $plugin;
 
     public function __construct(Main $plugin) {
-        parent::__construct("resetpassword", "Reset your password", "/resetpassword <old_password> <new_password>");
+        $messages = (array)$plugin->getCustomMessages()->get("messages");
+        parent::__construct(
+            "resetpassword",
+            (string)($messages["resetpassword_command_description"] ?? "Reset your password"),
+            (string)($messages["resetpassword_command_usage"] ?? "/resetpassword <old_password> <new_password>")
+        );
         $this->plugin = $plugin;
         $this->setPermission("xauth.command.resetpassword");
     }
 
     public function execute(CommandSender $sender, string $label, array $args): bool {
+        $messages = (array)$this->plugin->getCustomMessages()->get("messages");
+
         if (!$sender instanceof Player) {
-            $messages = (array)$this->plugin->getCustomMessages()->get("messages");
-            if (isset($messages["command_only_in_game"])) {
-                $sender->sendMessage((string)$messages["command_only_in_game"]);
-            }
+            $sender->sendMessage((string)($messages["command_only_in_game"] ?? "§cThis command can only be used in-game."));
             return false;
         }
 
@@ -42,10 +46,7 @@ class ResetPasswordCommand extends Command {
 
         $playerData = $this->plugin->getDataProvider()->getPlayer($sender);
         if ($playerData === null) {
-            $messages = (array)$this->plugin->getCustomMessages()->get("messages");
-            if (isset($messages["not_registered"])) {
-                $sender->sendMessage((string)$messages["not_registered"]);
-            }
+            $sender->sendMessage((string)($messages["not_registered"] ?? "§cYou are not registered."));
             return false;
         }
 
@@ -53,11 +54,13 @@ class ResetPasswordCommand extends Command {
         $newPassword = (string)($args[1] ?? '');
 
         if (!password_verify($oldPassword, (string)($playerData["password"] ?? ''))) {
-            $messages = (array)$this->plugin->getCustomMessages()->get("messages");
-            if (isset($messages["incorrect_password"])) {
-                $sender->sendMessage((string)$messages["incorrect_password"]);
-            }
+            $sender->sendMessage((string)($messages["incorrect_password"] ?? "§cIncorrect password."));
             return false;
+        }
+
+        if (password_needs_rehash((string)($playerData["password"] ?? ''), PASSWORD_BCRYPT)) {
+            $newHashedPassword = password_hash($oldPassword, PASSWORD_BCRYPT);
+            $this->plugin->getDataProvider()->changePassword($sender, $newHashedPassword);
         }
 
         if (($message = $this->plugin->getPasswordValidator()->validatePassword($newPassword)) !== null) {
@@ -70,10 +73,7 @@ class ResetPasswordCommand extends Command {
 
         (new PlayerChangePasswordEvent($sender))->call();
 
-        $messages = (array)$this->plugin->getCustomMessages()->get("messages");
-        if (isset($messages["change_password_success"])) {
-            $sender->sendMessage((string)$messages["change_password_success"]);
-        }
+        $sender->sendMessage((string)($messages["change_password_success"] ?? "§aYour password has been changed successfully."));
         return true;
     }
 }

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Luthfi\XAuth\commands;
 
-use Luthfi\XAuth\Main;
 use Luthfi\XAuth\event\PlayerLoginEvent;
+use Luthfi\XAuth\Main;
 use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
 use pocketmine\player\Player;
@@ -15,17 +15,21 @@ class LoginCommand extends Command {
     private Main $plugin;
 
     public function __construct(Main $plugin) {
-        parent::__construct("login", "Login to your account", "/login <password>");
+        $messages = (array)$plugin->getCustomMessages()->get("messages");
+        parent::__construct(
+            "login",
+            (string)($messages["login_command_description"] ?? "Login to your account"),
+            (string)($messages["login_command_usage"] ?? "/login <password>")
+        );
         $this->setPermission("xauth.command.login");
         $this->plugin = $plugin;
     }
 
     public function execute(CommandSender $sender, string $label, array $args): bool {
+        $messages = (array)$this->plugin->getCustomMessages()->get("messages");
+
         if (!$sender instanceof Player) {
-            $messages = (array)$this->plugin->getCustomMessages()->get("messages");
-            if (isset($messages["command_only_in_game"])) {
-                $sender->sendMessage((string)$messages["command_only_in_game"]);
-            }
+            $sender->sendMessage((string)($messages["command_only_in_game"] ?? "§cThis command can only be used in-game."));
             return false;
         }
 
@@ -39,34 +43,31 @@ class LoginCommand extends Command {
 
         if ($enabled && $this->plugin->getAuthManager()->isPlayerBlocked($sender, $maxAttempts, $blockTimeMinutes)) {
             $remainingMinutes = $this->plugin->getAuthManager()->getRemainingBlockTime($sender, $blockTimeMinutes);
-            $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["login_attempts_exceeded"] ?? "");
-            $sender->sendMessage(str_replace('{minutes}', (string)$remainingMinutes, $message));
+            $message = (string)($messages["login_attempts_exceeded"] ?? "§cYou have exceeded the number of login attempts. Please try again in {minutes} minutes.");
+            $message = str_replace('{minutes}', (string)$remainingMinutes, $message);
+            $kickOnBlock = (bool)($bruteforceConfig['kick_on_block'] ?? true);
+            if ($kickOnBlock) {
+                $sender->kick($message);
+            } else {
+                $sender->sendMessage($message);
+            }
             return false;
         }
 
         if (count($args) !== 1) {
-            $messages = (array)$this->plugin->getCustomMessages()->get("messages");
-            if (isset($messages["login_usage"])) {
-                $sender->sendMessage((string)$messages["login_usage"]);
-            }
+            $sender->sendMessage((string)($messages["login_usage"] ?? "§cUsage: /login <password>"));
             return false;
         }
 
         $playerData = $this->plugin->getDataProvider()->getPlayer($sender);
 
         if ($playerData === null) {
-            $messages = (array)$this->plugin->getCustomMessages()->get("messages");
-            if (isset($messages["not_registered"])) {
-                $sender->sendMessage((string)$messages["not_registered"]);
-            }
+            $sender->sendMessage((string)($messages["not_registered"] ?? "§cYou are not registered. Please use /register <password> to register."));
             return false;
         }
 
         if ($this->plugin->getDataProvider()->isPlayerLocked($sender->getName())) {
-            $messages = (array)$this->plugin->getCustomMessages()->get("messages");
-            if (isset($messages["account_locked_by_admin"])) {
-                $sender->sendMessage((string)$messages["account_locked_by_admin"]);
-            }
+            $sender->sendMessage((string)($messages["account_locked_by_admin"] ?? "§cYour account has been locked by an administrator."));
             return false;
         }
 
@@ -75,32 +76,37 @@ class LoginCommand extends Command {
 
         if (!password_verify($password, $storedPasswordHash)) {
             $this->plugin->getAuthManager()->incrementLoginAttempts($sender);
-            $messages = (array)$this->plugin->getCustomMessages()->get("messages");
-            if (isset($messages["incorrect_password"])) {
-                $sender->sendMessage((string)$messages["incorrect_password"]);
-            }
+            $sender->sendMessage((string)($messages["incorrect_password"] ?? "§cIncorrect password. Please try again."));
             return false;
         }
 
-        $this->plugin->getDataProvider()->updatePlayerIp($sender);
+        if (password_needs_rehash($storedPasswordHash, PASSWORD_BCRYPT)) {
+            $newHashedPassword = password_hash($password, PASSWORD_BCRYPT);
+            $this->plugin->getDataProvider()->changePassword($sender, $newHashedPassword);
+        }
+
+        $this->plugin->cancelKickTask($sender);
 
         $this->plugin->getAuthManager()->authenticatePlayer($sender);
 
         $event = new PlayerLoginEvent($sender);
         $event->call();
 
-        if ($event->isAuthenticationDelayed()) {
+        if ($event->isAuthenticationDelayed() || $event->isCancelled()) {
+            $this->plugin->getAuthManager()->deauthenticatePlayer($sender);
             return true;
         }
 
-        if ($event->isCancelled()) {
-            return true;
+        $autoLoginEnabled = (bool)($this->plugin->getConfig()->getNested('auto-login.enabled') ?? false);
+
+        if ($autoLoginEnabled) {
+            $lifetime = (int)($this->plugin->getConfig()->getNested('auto-login.lifetime_seconds') ?? 2592000); // Default to 30 days
+            $this->plugin->getDataProvider()->createSession($sender->getName(), $sender->getNetworkSession()->getIp(), $lifetime);
         }
 
-        $messages = (array)$this->plugin->getCustomMessages()->get("messages");
-        if (isset($messages["login_success"])) {
-            $sender->sendMessage((string)$messages["login_success"]);
-        }
+        $this->plugin->getDataProvider()->updatePlayerIp($sender);
+
+        $sender->sendMessage((string)($messages["login_success"] ?? "§aYou have successfully logged in!"));
         return true;
     }
 }

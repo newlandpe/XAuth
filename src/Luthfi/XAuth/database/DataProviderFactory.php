@@ -19,6 +19,10 @@ class DataProviderFactory {
         }
         $providerType = strtolower((string)($config['provider'] ?? 'yaml'));
 
+        return self::createProvider($plugin, $providerType);
+    }
+
+    public static function createProvider(Main $plugin, string $providerType): DataProviderInterface {
         switch ($providerType) {
             case 'yaml':
                 return new YamlProvider($plugin);

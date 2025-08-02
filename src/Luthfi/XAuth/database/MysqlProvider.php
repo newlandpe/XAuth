@@ -28,7 +28,8 @@ class MysqlProvider implements DataProviderInterface {
 
         $this->db = new PDO("mysql:host=" . $host . ";port=" . $port . ";dbname=" . $database, $user, $password);
         $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $this->db->exec("CREATE TABLE IF NOT EXISTS players (name VARCHAR(255) PRIMARY KEY, password VARCHAR(255), ip VARCHAR(255), locked BOOLEAN DEFAULT FALSE, registered_at INT, registration_ip VARCHAR(255), last_login_at INT)");
+        $this->db->exec("CREATE TABLE IF NOT EXISTS players (name VARCHAR(255) PRIMARY KEY, password VARCHAR(255), ip VARCHAR(255), locked BOOLEAN DEFAULT FALSE, registered_at INT, registration_ip VARCHAR(255), last_login_at INT, blocked_until INT DEFAULT 0, must_change_password BOOLEAN DEFAULT FALSE)");
+        $this->db->exec("CREATE TABLE IF NOT EXISTS sessions (session_id VARCHAR(255) PRIMARY KEY, player_name VARCHAR(255) NOT NULL, ip_address VARCHAR(255), login_time INT, last_activity INT, expiration_time INT, FOREIGN KEY (player_name) REFERENCES players(name) ON DELETE CASCADE)");
     }
 
     public function getPlayer(Player|OfflinePlayer $player): ?array {
@@ -101,6 +102,138 @@ class MysqlProvider implements DataProviderInterface {
         $stmt->execute();
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
         return is_array($result) && (bool)($result['locked'] ?? false);
+    }
+
+    public function setBlockedUntil(string $playerName, int $timestamp): void {
+        $name = strtolower($playerName);
+        $stmt = $this->db->prepare("UPDATE players SET blocked_until = :timestamp WHERE name = :name");
+        $stmt->bindValue(":timestamp", $timestamp, PDO::PARAM_INT);
+        $stmt->bindValue(":name", $name);
+        $stmt->execute();
+    }
+
+    public function getBlockedUntil(string $playerName): int {
+        $name = strtolower($playerName);
+        $stmt = $this->db->prepare("SELECT blocked_until FROM players WHERE name = :name");
+        $stmt->bindValue(":name", $name);
+        $stmt->execute();
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return is_array($result) ? (int)($result['blocked_until'] ?? 0) : 0;
+    }
+
+    public function setMustChangePassword(string $playerName, bool $required): void {
+        $name = strtolower($playerName);
+        $stmt = $this->db->prepare("UPDATE players SET must_change_password = :required WHERE name = :name");
+        $stmt->bindValue(":required", $required, PDO::PARAM_BOOL);
+        $stmt->bindValue(":name", $name);
+        $stmt->execute();
+    }
+
+    public function mustChangePassword(string $playerName): bool {
+        $name = strtolower($playerName);
+        $stmt = $this->db->prepare("SELECT must_change_password FROM players WHERE name = :name");
+        $stmt->bindValue(":name", $name);
+        $stmt->execute();
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return is_array($result) && (bool)($result['must_change_password'] ?? false);
+    }
+
+    public function getAllPlayerData(): array {
+        $stmt = $this->db->query("SELECT * FROM players");
+        $data = [];
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $data[strtolower($row['name'])] = $row;
+        }
+        return $data;
+    }
+
+    public function registerPlayerRaw(string $playerName, array $data): void {
+        $stmt = $this->db->prepare("INSERT IGNORE INTO players (name, password, ip, locked, registered_at, registration_ip, last_login_at, blocked_until, must_change_password) VALUES (:name, :password, :ip, :locked, :registered_at, :registration_ip, :last_login_at, :blocked_until, :must_change_password)");
+        $stmt->bindValue(":name", strtolower($playerName));
+        $stmt->bindValue(":password", $data['password']);
+        $stmt->bindValue(":ip", $data['ip']);
+        $stmt->bindValue(":locked", (bool)($data['locked'] ?? false), PDO::PARAM_BOOL);
+        $stmt->bindValue(":registered_at", $data['registered_at'], PDO::PARAM_INT);
+        $stmt->bindValue(":registration_ip", $data['registration_ip']);
+        $stmt->bindValue(":last_login_at", $data['last_login_at'], PDO::PARAM_INT);
+        $stmt->bindValue(":blocked_until", $data['blocked_until'] ?? 0, PDO::PARAM_INT);
+        $stmt->bindValue(":must_change_password", (bool)($data['must_change_password'] ?? false), PDO::PARAM_BOOL);
+        $stmt->execute();
+    }
+
+    public function createSession(string $playerName, string $ipAddress, int $lifetimeSeconds): string {
+        $playerNameLower = strtolower($playerName);
+        $sessions = $this->getSessionsByPlayer($playerNameLower);
+        $maxSessions = (int)($this->plugin->getConfig()->getNested('auto-login.max_sessions_per_player') ?? 5);
+
+        if (count($sessions) >= $maxSessions) {
+            // Sort sessions by login_time ascending to find the oldest
+            usort($sessions, function($a, $b) {
+                return ($a['login_time'] ?? 0) <=> ($b['login_time'] ?? 0);
+            });
+            // Delete the oldest session
+            $this->deleteSession((string)($sessions[0]['session_id'] ?? ''));
+        }
+
+        $sessionId = bin2hex(random_bytes(16));
+        $loginTime = time();
+        $expirationTime = $loginTime + $lifetimeSeconds;
+
+        $stmt = $this->db->prepare("INSERT INTO sessions (session_id, player_name, ip_address, login_time, last_activity, expiration_time) VALUES (:session_id, :player_name, :ip_address, :login_time, :last_activity, :expiration_time)");
+        $stmt->bindValue(":session_id", $sessionId);
+        $stmt->bindValue(":player_name", $playerNameLower);
+        $stmt->bindValue(":ip_address", $ipAddress);
+        $stmt->bindValue(":login_time", $loginTime, PDO::PARAM_INT);
+        $stmt->bindValue(":last_activity", $loginTime, PDO::PARAM_INT);
+        $stmt->bindValue(":expiration_time", $expirationTime, PDO::PARAM_INT);
+        $stmt->execute();
+        return $sessionId;
+    }
+
+    public function getSession(string $sessionId): ?array {
+        $stmt = $this->db->prepare("SELECT * FROM sessions WHERE session_id = :session_id AND expiration_time > :current_time");
+        $stmt->bindValue(":session_id", $sessionId);
+        $stmt->bindValue(":current_time", time(), PDO::PARAM_INT);
+        $stmt->execute();
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return is_array($result) ? $result : null;
+    }
+
+    public function getSessionsByPlayer(string $playerName): array {
+        $stmt = $this->db->prepare("SELECT * FROM sessions WHERE player_name = :player_name AND expiration_time > :current_time ORDER BY login_time DESC");
+        $stmt->bindValue(":player_name", strtolower($playerName));
+        $stmt->bindValue(":current_time", time(), PDO::PARAM_INT);
+        $stmt->execute();
+        $sessions = [];
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $sessions[] = $row;
+        }
+        return $sessions;
+    }
+
+    public function deleteSession(string $sessionId): void {
+        $stmt = $this->db->prepare("DELETE FROM sessions WHERE session_id = :session_id");
+        $stmt->bindValue(":session_id", $sessionId);
+        $stmt->execute();
+    }
+
+    public function deleteAllSessionsForPlayer(string $playerName): void {
+        $stmt = $this->db->prepare("DELETE FROM sessions WHERE player_name = :player_name");
+        $stmt->bindValue(":player_name", strtolower($playerName));
+        $stmt->execute();
+    }
+
+    public function updateSessionLastActivity(string $sessionId): void {
+        $stmt = $this->db->prepare("UPDATE sessions SET last_activity = :current_time WHERE session_id = :session_id");
+        $stmt->bindValue(":current_time", time(), PDO::PARAM_INT);
+        $stmt->bindValue(":session_id", $sessionId);
+        $stmt->execute();
+    }
+
+    public function cleanupExpiredSessions(): void {
+        $stmt = $this->db->prepare("DELETE FROM sessions WHERE expiration_time <= :current_time");
+        $stmt->bindValue(":current_time", time(), PDO::PARAM_INT);
+        $stmt->execute();
     }
 
     public function close(): void {

@@ -1,5 +1,5 @@
 messages:
-  register_prompt: "Please register with /register <password> <confirmpassword>"
+  register_prompt: "Please register with /register <password> <confirm_password>"
   register_success: "You have successfully registered!"
   login_prompt: "Please log in with /login <password>"
   login_success: "You have successfully logged in!"
@@ -8,7 +8,8 @@ messages:
   incorrect_password: "§cIncorrect password. Please try again."
   not_registered: "§cYou are not registered. Please use /register <password> to register."
   already_registered: "§cYou are already registered. Please use /login <password> to log in."
-  password_too_short: "§cYour password is too short. It must be at least 6 characters long."
+  password_too_short: "§cYour password is too short. It must be at least {length} characters long."
+  password_too_long: "§cYour password is too long. It must be no more than {length} characters long."
   password_mismatch: "§cPasswords do not match."
   password_no_uppercase: "§cPassword must contain at least one uppercase letter."
   password_no_lowercase: "§cPassword must contain at least one lowercase letter."
@@ -18,18 +19,31 @@ messages:
   xauth_unregister_usage: "§cUsage: /xauth unregister <player>"
   xauth_reload_success: "§aXAuth configuration reloaded."
   xauth_lookup_usage: "§cUsage: /xauth lookup <player>"
-  xauth_player_lookup_header: "§a--- Player Lookup: {player_name} ---"
-  xauth_registered: "§aRegistered: {date}"
-  xauth_registration_ip: "§aRegistration IP: {ip}"
-  xauth_last_login_ip: "§aLast Login IP: {ip}"
-  xauth_last_login: "§aLast Login: {date}"
-  xauth_locked: "§aLocked: {status}"
-  xauth_lookup_footer: "§a-----------------------------------"
+  xauth_player_lookup_info: |
+    §e--- Player Information: {player_name} ---
+    §fRegistered: §7{registered_at}
+    §fRegistration IP: §7{registration_ip}
+    §fLast Login IP: §7{last_login_ip}
+    §fLast Login: §7{last_login_at}
+    §fLocked: §7{locked_status}
   xauth_lock_usage: "§cUsage: /xauth lock <player>"
   xauth_player_locked: "§aPlayer '{player_name}' has been locked."
   xauth_unlock_usage: "§cUsage: /xauth unlock <player>"
   xauth_player_unlocked: "§aPlayer '{player_name}' has been unlocked."
   xauth_unknown_subcommand: "§cUnknown subcommand. Use /xauth help for a list of commands."
+  xauth_help_message: |
+    §e--- XAuth Help ---
+    §f/xauth help: §7Show this help guide.
+    §f/xauth lock <player>: §7Lock a player's account.
+    §f/xauth unlock <player>: §7Unlock a player's account.
+    §f/xauth lookup <player>: §7Look up player information.
+    §f/xauth setpassword <player> <password>: §7Set a new password for a player.
+    §f/xauth unregister <player>: §7Unregister a player's account.
+    §f/xauth reload: §7Reload XAuth configuration.
+    §f/xauth forcepasswordchange <player_name>: §7Forces a player to change their password on next login.
+    §f/xauth migrate-provider <source_provider> <destination_provider>: §7Migrates player data between providers (console only).
+    §f/xauth status <subcommand>: §7Manage online player authentication status.
+    §f/xauth sessions <subcommand>: §7Manage player sessions.
   command_only_in_game: "§cThis command can only be used in-game."
   account_locked_by_admin: "§cYour account has been locked by an administrator."
   login_usage: "§cUsage: /login <password>"
@@ -39,7 +53,56 @@ messages:
   set_password_success: "§aPlayer password has been set successfully."
   player_not_registered: "§cPlayer is not registered."
   login_attempts_exceeded: "§cYou have exceeded the number of login attempts. Please try again in {minutes} minutes."
+  login_timeout: "§cYou took too long to log in."
+  session_ended_by_admin: "§eYour session has been ended by an administrator. Please log in again."
   unexpected_error: "§cAn unexpected error occurred. Please try again."
+  xauth_status_usage: "§cUsage: /xauth status <list|end> [player]"
+  xauth_status_list_header: "§e--- Online Players ({count}) ---"
+  xauth_status_authenticated: "§aAuthenticated"
+  xauth_status_unauthenticated: "§eUnauthenticated"
+  xauth_status_end_usage: "§cUsage: /xauth status end <player>"
+  xauth_player_not_online: "§cPlayer is not online."
+  xauth_player_not_authenticated: "§cPlayer is not authenticated."
+  xauth_status_end_success: "§aSession for player {player_name} has been ended."
+  xauth_status_unknown_subcommand: "§cUnknown status subcommand. Use /xauth status <list|end>"
+  xauth_sessions_usage: "§cUsage: /xauth sessions <list|terminate|terminateall|cleanup> [args]"
+  xauth_sessions_list_usage: "§cUsage: /xauth sessions list <player>"
+  xauth_sessions_no_sessions: "§eNo active sessions found for {player_name}."
+  xauth_sessions_list_header: "§e--- Sessions for {player_name} ({count}) ---"
+  xauth_sessions_terminate_usage: "§cUsage: /xauth sessions terminate <session_id>"
+  xauth_sessions_terminate_not_found: "§cSession not found or already expired."
+  xauth_sessions_terminate_success: "§aSession {session_id} terminated."
+  xauth_sessions_terminateall_usage: "§cUsage: /xauth sessions terminateall <player>"
+  xauth_sessions_terminateall_success: "§aAll sessions for {player_name} terminated."
+  xauth_sessions_cleanup_success: "§aExpired sessions cleaned up."
+  xauth_sessions_unknown_subcommand: "§cUnknown sessions subcommand. Use /xauth sessions <list|terminate|terminateall|cleanup>"
+  xauth_forcepasswordchange_usage: "§cUsage: /xauth forcepasswordchange <player>"
+  xauth_forcepasswordchange_success: "§aPlayer {player_name} will be forced to change their password on next login."
+  xauth_forcepasswordchange_now: "§aPlayer {player_name} is now being forced to change their password."
+  force_change_password_prompt: "§eFor security reasons, you must change your password before you can continue."
+  force_change_password_form_title: "Forced Password Change"
+  command_only_in_console: "§cThis command can only be used in the console."
+  xauth_migrate_usage: "§cUsage: /xauth migrate-provider <source_provider> <destination_provider>"
+  login_form_closed: "You have closed the login form."
+  register_form_closed: "You have closed the registration form."
+  force_change_password_closed: "§cYou must change your password to continue."
+  xauth_command_description: "XAuth admin commands"
+  xauth_command_usage: "§cUsage: /xauth <subcommand> [args]"
+  login_command_description: "Login to your account"
+  login_command_usage: "§cUsage: /login <password>"
+  register_command_description: "Register your account"
+  register_command_usage: "§cUsage: /register <password> <confirm_password>"
+  resetpassword_command_description: "Reset your password"
+  resetpassword_command_usage: "§cUsage: /resetpassword <old_password> <new_password>"
+  config_outdated_warning: "Your config.yml is outdated! Please update it to the latest version."
+  xauth_migration_start: "§eStarting migration from '{source_provider}' to '{destination_provider}'..."
+  xauth_migration_fetching_data: "§eFetching all player data from source..."
+  xauth_migration_found_players: "§aFound {count} players to migrate."
+  xauth_migration_complete: "§aMigration complete!"
+  xauth_migration_migrated_count: "§a- Migrated: {count} players"
+  xauth_migration_skipped_count: "§e- Skipped (already exist): {count} players"
+  xauth_migration_error_prefix: "§cError: "
+  xauth_migration_unexpected_error_prefix: "§cAn unexpected error occurred during migration: "
 
 forms:
   login:

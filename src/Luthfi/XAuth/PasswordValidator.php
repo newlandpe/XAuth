@@ -23,6 +23,12 @@ class PasswordValidator {
             return str_replace('{length}', (string)$minLength, $message);
         }
 
+        $maxLength = (int)($complexityConfig['max_length'] ?? 64);
+        if (strlen($password) > $maxLength) {
+            $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["password_too_long"] ?? "");
+            return str_replace('{length}', (string)$maxLength, $message);
+        }
+
         $requireUppercase = (bool)($complexityConfig['require_uppercase'] ?? false);
         if ($requireUppercase && !preg_match('/[A-Z]/', $password)) {
             return (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["password_no_uppercase"] ?? "");

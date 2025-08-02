@@ -25,5 +25,31 @@ interface DataProviderInterface {
 
     public function isPlayerLocked(string $playerName): bool;
 
+    public function setBlockedUntil(string $playerName, int $timestamp): void;
+
+    public function getBlockedUntil(string $playerName): int;
+
+    public function setMustChangePassword(string $playerName, bool $required): void;
+
+    public function mustChangePassword(string $playerName): bool;
+
+    public function getAllPlayerData(): array;
+
+    public function registerPlayerRaw(string $playerName, array $data): void;
+
+    public function createSession(string $playerName, string $ipAddress, int $lifetimeSeconds): string;
+
+    public function getSession(string $sessionId): ?array;
+
+    public function getSessionsByPlayer(string $playerName): array;
+
+    public function deleteSession(string $sessionId): void;
+
+    public function deleteAllSessionsForPlayer(string $playerName): void;
+
+    public function updateSessionLastActivity(string $sessionId): void;
+
+    public function cleanupExpiredSessions(): void;
+
     public function close(): void;
 }
