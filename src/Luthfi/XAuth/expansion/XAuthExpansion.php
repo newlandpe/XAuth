@@ -68,3 +68,4 @@ class XAuthExpansion extends PlaceholderExpansion {
         $defaultValue = $value ? "Yes" : "No";
         return (string)($this->plugin->getCustomMessages()->getNested($key) ?? $defaultValue);
     }
+}
