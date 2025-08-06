@@ -64,58 +64,36 @@ class FormManager {
                 return;
             }
 
+            $passwordHasher = $this->plugin->getPasswordHasher();
+            if ($passwordHasher === null) {
+                $this->plugin->getLogger()->error("PasswordHasher is not initialized.");
+                $this->sendLoginForm($player, (string)($messages["unexpected_error"] ?? "§cAn unexpected error occurred. Please try again."));
+                return;
+            }
+
             $storedHash = (string)($playerData["password"] ?? '');
 
-            if (!password_verify($password, $storedHash)) {
+            if (!$passwordHasher->verifyPassword($password, $storedHash)) {
                 $this->plugin->getAuthManager()->incrementLoginAttempts($player);
                 $this->sendLoginForm($player, (string)($messages["incorrect_password"] ?? "§cIncorrect password. Please try again."));
                 return;
             }
 
-            if (password_needs_rehash($storedHash, PASSWORD_BCRYPT)) {
-                $newHashedPassword = password_hash($password, PASSWORD_BCRYPT);
+            if ($passwordHasher->needsRehash($storedHash)) {
+                $newHashedPassword = $passwordHasher->hashPassword($password);
                 $this->plugin->getDataProvider()->changePassword($player, $newHashedPassword);
             }
 
             $this->plugin->cancelKickTask($player);
-            $this->plugin->getAuthManager()->authenticatePlayer($player);
 
             $event = new PlayerLoginEvent($player);
             $event->call();
 
-            if ($event->isAuthenticationDelayed() || $event->isCancelled()) {
-                $this->plugin->getAuthManager()->deauthenticatePlayer($player);
+            if ($event->isCancelled() || $event->isAuthenticationDelayed()) {
                 return;
             }
 
-            $autoLoginEnabled = (bool)($this->plugin->getConfig()->getNested('auto-login.enabled') ?? false);
-
-            if ($autoLoginEnabled) {
-                $sessions = $this->plugin->getDataProvider()->getSessionsByPlayer($player->getName());
-                $ip = $player->getNetworkSession()->getIp();
-                $existingSessionId = null;
-
-                foreach ($sessions as $sessionId => $sessionData) {
-                    if (($sessionData['ip_address'] ?? '') === $ip) {
-                        $existingSessionId = $sessionId;
-                        break;
-                    }
-                }
-
-                $lifetime = (int)($this->plugin->getConfig()->getNested('auto-login.lifetime_seconds') ?? 2592000);
-
-                if ($existingSessionId !== null) {
-                    $refreshSession = (bool)($this->plugin->getConfig()->getNested('auto-login.refresh_session_on_login') ?? true);
-                    if ($refreshSession) {
-                        $this->plugin->getDataProvider()->refreshSession($existingSessionId, $lifetime);
-                    }
-                } else {
-                    $this->plugin->getDataProvider()->createSession($player->getName(), $ip, $lifetime);
-                }
-            }
-
-            $this->plugin->getDataProvider()->updatePlayerIp($player);
-            $player->sendMessage((string)($messages["login_success"] ?? "§aYou have successfully logged in!"));
+            $this->plugin->forceLogin($player);
         });
 
         $form->setTitle((string)($loginFormConfig["title"] ?? "Login"));
@@ -158,11 +136,19 @@ class FormManager {
                 return;
             }
 
+            $passwordHasher = $this->plugin->getPasswordHasher();
+            if ($passwordHasher === null) {
+                $this->plugin->getLogger()->error("PasswordHasher is not initialized.");
+                $this->sendRegisterForm($player, (string)($messages["unexpected_error"] ?? "§cAn unexpected error occurred. Please try again."));
+                return;
+            }
+
             $this->plugin->cancelKickTask($player);
-            $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
+            $hashedPassword = $passwordHasher->hashPassword($password);
             $this->plugin->getDataProvider()->registerPlayer($player, $hashedPassword);
             $this->plugin->getAuthManager()->authenticatePlayer($player);
             (new PlayerRegisterEvent($player))->call();
+            $this->plugin->restorePlayerState($player);
             $player->sendMessage((string)($messages["register_success"] ?? "§aYou have successfully registered!"));
         });
 
@@ -199,9 +185,23 @@ class FormManager {
                 return;
             }
 
-            if (!password_verify($oldPassword, (string)($playerData["password"] ?? ''))) {
+            $passwordHasher = $this->plugin->getPasswordHasher();
+            if ($passwordHasher === null) {
+                $this->plugin->getLogger()->error("PasswordHasher is not initialized.");
+                $this->sendChangePasswordForm($player, (string)($messages["unexpected_error"] ?? "§cAn unexpected error occurred. Please try again."));
+                return;
+            }
+
+            $currentHashedPassword = (string)($playerData["password"] ?? '');
+
+            if (!$passwordHasher->verifyPassword($oldPassword, $currentHashedPassword)) {
                 $this->sendChangePasswordForm($player, (string)($messages["incorrect_password"] ?? "§cIncorrect password."));
                 return;
+            }
+
+            if ($passwordHasher->needsRehash($currentHashedPassword)) {
+                $currentHashedPassword = $passwordHasher->hashPassword($oldPassword);
+                $this->plugin->getDataProvider()->changePassword($player, $currentHashedPassword);
             }
 
             if (($message = $this->plugin->getPasswordValidator()->validatePassword($newPassword)) !== null) {
@@ -214,7 +214,7 @@ class FormManager {
                 return;
             }
 
-            $newHashedPassword = password_hash($newPassword, PASSWORD_BCRYPT);
+            $newHashedPassword = $passwordHasher->hashPassword($newPassword);
             $this->plugin->getDataProvider()->changePassword($player, $newHashedPassword);
             (new PlayerChangePasswordEvent($player))->call();
             $player->sendMessage((string)($messages["change_password_success"] ?? "§aYour password has been changed successfully."));
@@ -262,7 +262,14 @@ class FormManager {
                 return;
             }
 
-            $newHashedPassword = password_hash($newPassword, PASSWORD_BCRYPT);
+            $passwordHasher = $this->plugin->getPasswordHasher();
+            if ($passwordHasher === null) {
+                $this->plugin->getLogger()->error("PasswordHasher is not initialized.");
+                $this->sendForceChangePasswordForm($player, (string)($messages["unexpected_error"] ?? "§cAn unexpected error occurred. Please try again."));
+                return;
+            }
+
+            $newHashedPassword = $passwordHasher->hashPassword($newPassword);
             $this->plugin->getDataProvider()->changePassword($player, $newHashedPassword);
             $this->plugin->getDataProvider()->setMustChangePassword($player->getName(), false);
             $this->plugin->stopForcePasswordChange($player);

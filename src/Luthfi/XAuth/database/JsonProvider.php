@@ -138,12 +138,13 @@ class JsonProvider implements DataProviderInterface {
         $maxSessions = (int)($this->plugin->getConfig()->getNested('auto-login.max_sessions_per_player') ?? 5);
 
         if (count($sessions) >= $maxSessions) {
-            // Sort sessions by login_time ascending to find the oldest
             uasort($sessions, function($a, $b) {
-                return ($a['login_time'] ?? 0) <=> ($b['login_time'] ?? 0);
+                return ($a['last_activity'] ?? 0) <=> ($b['last_activity'] ?? 0);
             });
-            // Delete the oldest session
-            $this->deleteSession((string)(array_key_first($sessions)));
+            $sessionsToDelete = array_slice($sessions, 0, count($sessions) - $maxSessions + 1, true);
+            foreach (array_keys($sessionsToDelete) as $sessionId) {
+                $this->deleteSession($sessionId);
+            }
         }
 
         $sessionId = bin2hex(random_bytes(16));
@@ -228,6 +229,16 @@ class JsonProvider implements DataProviderInterface {
         }
         $this->sessionData->setAll($sessionsToKeep);
         $this->sessionData->save();
+    }
+
+    public function getRegistrationCountByIp(string $ipAddress): int {
+        $count = 0;
+        foreach ($this->playerData->getAll() as $playerData) {
+            if (isset($playerData['registration_ip']) && $playerData['registration_ip'] === $ipAddress) {
+                $count++;
+            }
+        }
+        return $count;
     }
 
     public function close(): void {

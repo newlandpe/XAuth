@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Luthfi\XAuth\event;
 
-use pocketmine\event\player\PlayerEvent;
-use pocketmine\player\Player;
 use pocketmine\event\Cancellable;
 use pocketmine\event\CancellableTrait;
+use pocketmine\event\player\PlayerEvent;
+use pocketmine\player\Player;
 
 class PlayerLoginEvent extends PlayerEvent implements Cancellable {
     use CancellableTrait;

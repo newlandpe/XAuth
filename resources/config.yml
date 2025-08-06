@@ -22,6 +22,40 @@ password_complexity:
   require_lowercase: true
   require_number: true
   require_symbol: false
+  # Enable checking against a list of common/weak passwords.
+  enable_weak_password_check: true
+  # Path to the file containing a list of weak passwords (one password per line).
+  weak_password_list_file: "weak_passwords.txt"
+
+# Password hashing settings
+password_hashing:
+  # Available algorithms: BCRYPT, ARGON2ID, ARGON2I
+  # BCRYPT is generally recommended for most use cases.
+  # ARGON2ID is a newer, more memory-hard algorithm that offers stronger protection against GPU attacks.
+  # ARGON2I is a variant of Argon2 optimized for defense against side-channel attacks.
+  algorithm: BCRYPT
+  options:
+    # Options for BCRYPT algorithm
+    # cost: The algorithmic cost that should be used. Ranges from 4 to 31.
+    # Higher cost means more secure but slower hashing. Recommended: 10-12.
+    BCRYPT:
+      cost: 10
+    # Options for ARGON2ID algorithm
+    # memory_cost: Maximum memory (in kibibytes) that Argon2 will use. Default: 65536 (64MB).
+    # time_cost: Maximum amount of time (in iterations) that Argon2 will spend. Default: 4.
+    # threads: Number of threads that Argon2 will use. Default: 1.
+    ARGON2ID:
+      memory_cost: 65536
+      time_cost: 4
+      threads: 1
+    # Options for ARGON2I algorithm
+    # memory_cost: Maximum memory (in kibibytes) that Argon2 will use. Default: 65536 (64MB).
+    # time_cost: Maximum amount of time (in iterations) that Argon2 will spend. Default: 4.
+    # threads: Number of threads that Argon2 will use. Default: 1.
+    ARGON2I:
+      memory_cost: 65536
+      time_cost: 4
+      threads: 1
 
 forms:
   enabled: false
@@ -61,5 +95,97 @@ session:
   # The time in seconds a player has to log in before being kicked. Set to 0 to disable.
   login-timeout: 30
 
+# IP address limits
+ip_limits:
+  # Maximum number of registrations per IP address. 0 to disable.
+  max_registrations_per_ip: 0
+  # Maximum number of connections per IP address. 0 to disable.
+  max_joins_per_ip: 0
+
+# Restrictions for unauthenticated players
+restrictions:
+  # Allow player to chat.
+  allow_chat: false
+  # Allow player to move. If false, the player will be frozen.
+  allow_movement: true
+  # Allow player to receive damage.
+  allow_damage: false
+  # Allow player to break blocks.
+  allow_block_breaking: false
+  # Allow player to place blocks.
+  allow_block_placing: false
+  # Allow player to drop items.
+  allow_item_dropping: false
+  # Allow player to interact with blocks (e.g., open chests, doors).
+  allow_block_interaction: false
+  # Allow player to use items.
+  allow_item_use: false
+  # Allow player to pick up items from the ground.
+  allow_item_pickup: false
+  # Allow player to open inventories (chests, furnaces, etc.).
+  allow_inventory_open: false
+  # A list of commands that unauthenticated players are allowed to use.
+  # Commands must not start with a forward slash (/).
+  # Use lowercase for all commands.
+  allowed_commands:
+    - login
+    - register
+
+# Player state protection settings (on join, before authentication)
+protection:
+  # Force player into survival mode until they log in.
+  force_survival: true
+
+  # Teleport player to a safe location until they log in.
+  teleport:
+    enabled: true
+    # If true, the player will be teleported back to their original position after login.
+    # If false, they will remain at the spawn location.
+    return_to_original_position: true
+    spawn_world: "world"
+    spawn_coords:
+      x: 128
+      y: 70
+      z: 128
+
+  # Protects and hides the player's full state (inventory, armor, off-hand,
+  # effects, health, xp) until they log in.
+  protect_player_state: true
+
+# In-world visibility settings for unauthenticated players.
+in_world_visibility:
+  # Method to use for making the player's model invisible.
+  # "packets": True invisibility. Hides the player entity completely. (Recommended)
+  # "effect": Applies the standard invisibility potion effect.
+  # "none": Player model is fully visible.
+  mode: "packets"
+  # true - hide other players from unauthenticated players.
+  # false - show other players to unauthenticated players.
+  hide_others_from_unauthenticated: true
+
+# Player list (Tab) visibility for unauthenticated players.
+player_list_visibility:
+  # If true, the player will be hidden from the player list (Tab).
+  # This is independent of the in-world visibility mode.
+  hide: true
+  # true - hide other players from unauthenticated players in the player list (Tab).
+  # false - show other players to unauthenticated players in the player list (Tab).
+  hide_others_from_unauthenticated: false
+
+# Apply blindness effect to the unauthenticated player.
+apply_blindness: true
+
+# GeoIP Protection
+geoip:
+  enabled: false
+  # Available modes: blacklist, whitelist
+  mode: "blacklist"
+  # List of country codes (e.g., RU, BY, CN) or "LOCALHOST" for local network connections.
+  country-list: []
+  network:
+    force-resolve-hosts:
+      # Example: "ip-api.com": "208.95.112.1"
+    custom-ca-bundle: ""
+
 # Do not change this
-config-version: 1.0
+config-version: 1.2

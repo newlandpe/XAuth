@@ -64,13 +64,22 @@ class RegisterCommand extends Command {
             return false;
         }
 
-        $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
+        $passwordHasher = $this->plugin->getPasswordHasher();
+        if ($passwordHasher === null) {
+            $sender->sendMessage((string)($messages["unexpected_error"] ?? "§cAn unexpected error occurred. Please try again."));
+            $this->plugin->getLogger()->error("PasswordHasher is not initialized.");
+            return false;
+        }
+
+        $hashedPassword = $passwordHasher->hashPassword($password);
 
         $this->plugin->getDataProvider()->registerPlayer($sender, $hashedPassword);
 
         (new PlayerRegisterEvent($sender))->call();
 
         $this->plugin->getAuthManager()->authenticatePlayer($sender);
+
+        $this->plugin->restorePlayerState($sender);
 
         $sender->sendMessage((string)($messages["register_success"] ?? "§aYou have successfully registered!"));
         return true;

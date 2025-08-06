@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Luthfi\XAuth\commands;
 
 use Luthfi\XAuth\database\DataProviderFactory;
+use Luthfi\XAuth\event\PlayerDeauthenticateEvent;
 use Luthfi\XAuth\event\PlayerUnregisterEvent;
 use Luthfi\XAuth\Main;
 use pocketmine\command\Command;
@@ -145,8 +146,15 @@ class XAuthCommand extends Command {
                     return false;
                 }
 
+                $passwordHasher = $this->plugin->getPasswordHasher();
+                if ($passwordHasher === null) {
+                    $sender->sendMessage((string)($messages["unexpected_error"] ?? "§cAn unexpected error occurred. Please try again."));
+                    $this->plugin->getLogger()->error("PasswordHasher is not initialized.");
+                    return false;
+                }
+
                 $offlinePlayer = Server::getInstance()->getOfflinePlayer($playerName);
-                $newHashedPassword = password_hash($newPassword, PASSWORD_BCRYPT);
+                $newHashedPassword = $passwordHasher->hashPassword($newPassword);
                 $this->plugin->getDataProvider()->changePassword($offlinePlayer, $newHashedPassword);
                 $sender->sendMessage((string)($messages["set_password_success"] ?? "§aPlayer password has been set successfully."));
                 break;
@@ -167,6 +175,16 @@ class XAuthCommand extends Command {
                 $this->plugin->getDataProvider()->unregisterPlayer($playerName);
                 (new PlayerUnregisterEvent($offlinePlayer))->call();
                 $sender->sendMessage((string)($messages["unregister_success"] ?? "§aPlayer account has been unregistered successfully."));
+
+                // Якщо гравець онлайн, деавтентифікуємо його і примушуємо до реєстрації
+                $player = $this->plugin->getServer()->getPlayerExact($playerName);
+                if ($player !== null) {
+                    // Викликаємо PlayerDeauthenticateEvent, щоб Main.php обробив логіку
+                    (new PlayerDeauthenticateEvent($player, false))->call();
+                    // Оскільки гравець тепер незареєстрований, йому потрібно показати форму реєстрації
+                    $this->plugin->getFormManager()->sendRegisterForm($player);
+                    $player->sendMessage((string)($messages["account_unregistered_by_admin"] ?? "§eYour account has been unregistered by an administrator. Please register again."));
+                }
                 break;
             case "forcepasswordchange":
             case "forcepass":
@@ -269,8 +287,7 @@ class XAuthCommand extends Command {
                             $sender->sendMessage((string)($messages["xauth_player_not_authenticated"] ?? "§cPlayer is not authenticated."));
                             return false;
                         }
-                        $this->plugin->getAuthManager()->deauthenticatePlayer($player);
-                        $this->plugin->scheduleKickTask($player);
+                        (new PlayerDeauthenticateEvent($player, false))->call();
                         $player->sendMessage((string)($messages["session_ended_by_admin"] ?? "§eYour session has been ended by an administrator. Please log in again."));
                         $sender->sendMessage(str_replace("{player_name}", $player->getName(), (string)($messages["xauth_status_end_success"] ?? "§aSession for player {player_name} has been ended.")));
                         break;
@@ -327,6 +344,13 @@ class XAuthCommand extends Command {
                         }
                         $this->plugin->getDataProvider()->deleteSession($sessionId);
                         $sender->sendMessage(str_replace("{session_id}", $sessionId, (string)($messages["xauth_sessions_terminate_success"] ?? "§aSession {session_id} terminated.")));
+
+                        // Якщо гравець онлайн, деавтентифікуємо його
+                        $player = $this->plugin->getServer()->getPlayerExact($playerName);
+                        if ($player !== null && $this->plugin->getAuthManager()->isPlayerAuthenticated($player)) {
+                            (new PlayerDeauthenticateEvent($player, false))->call();
+                            $player->sendMessage((string)($messages["session_ended_by_admin"] ?? "§eYour session has been ended by an administrator. Please log in again."));
+                        }
                         break;
                     case "terminateall":
                         $playerName = (string)($args[0] ?? ($sender instanceof Player ? $sender->getName() : ""));
@@ -336,6 +360,13 @@ class XAuthCommand extends Command {
                         }
                         $this->plugin->getDataProvider()->deleteAllSessionsForPlayer($playerName);
                         $sender->sendMessage(str_replace("{player_name}", $playerName, (string)($messages["xauth_sessions_terminateall_success"] ?? "§aAll sessions for {player_name} terminated.")));
+
+                        // Якщо гравець онлайн, деавтентифікуємо його
+                        $player = $this->plugin->getServer()->getPlayerExact($playerName);
+                        if ($player !== null && $this->plugin->getAuthManager()->isPlayerAuthenticated($player)) {
+                            (new PlayerDeauthenticateEvent($player, false))->call();
+                            $player->sendMessage((string)($messages["session_ended_by_admin"] ?? "§eYour session has been ended by an administrator. Please log in again."));
+                        }
                         break;
                     case "cleanup":
                         if (!$sender instanceof \pocketmine\console\ConsoleCommandSender) {

@@ -79,58 +79,38 @@ class LoginCommand extends Command {
         $password = (string)($args[0] ?? '');
         $storedPasswordHash = (string)($playerData["password"] ?? '');
 
-        if (!password_verify($password, $storedPasswordHash)) {
+        $passwordHasher = $this->plugin->getPasswordHasher();
+        if ($passwordHasher === null) {
+            $sender->sendMessage((string)($messages["unexpected_error"] ?? "§cAn unexpected error occurred. Please try again."));
+            $this->plugin->getLogger()->error("PasswordHasher is not initialized.");
+            return false;
+        }
+
+        if (!$passwordHasher->verifyPassword($password, $storedPasswordHash)) {
             $this->plugin->getAuthManager()->incrementLoginAttempts($sender);
             $sender->sendMessage((string)($messages["incorrect_password"] ?? "§cIncorrect password. Please try again."));
             return false;
         }
 
-        if (password_needs_rehash($storedPasswordHash, PASSWORD_BCRYPT)) {
-            $newHashedPassword = password_hash($password, PASSWORD_BCRYPT);
+        if ($passwordHasher->needsRehash($storedPasswordHash)) {
+            $newHashedPassword = $passwordHasher->hashPassword($password);
             $this->plugin->getDataProvider()->changePassword($sender, $newHashedPassword);
         }
 
         $this->plugin->cancelKickTask($sender);
 
-        $this->plugin->getAuthManager()->authenticatePlayer($sender);
-
         $event = new PlayerLoginEvent($sender);
         $event->call();
 
-        if ($event->isAuthenticationDelayed() || $event->isCancelled()) {
-            $this->plugin->getAuthManager()->deauthenticatePlayer($sender);
+        if ($event->isCancelled()) {
+            return false;
+        }
+
+        if ($event->isAuthenticationDelayed()) {
             return true;
         }
 
-        $autoLoginEnabled = (bool)($this->plugin->getConfig()->getNested('auto-login.enabled') ?? false);
-
-        if ($autoLoginEnabled) {
-            $sessions = $this->plugin->getDataProvider()->getSessionsByPlayer($sender->getName());
-            $ip = $sender->getNetworkSession()->getIp();
-            $existingSessionId = null;
-
-            foreach ($sessions as $sessionId => $sessionData) {
-                if (($sessionData['ip_address'] ?? '') === $ip) {
-                    $existingSessionId = $sessionId;
-                    break;
-                }
-            }
-
-            $lifetime = (int)($this->plugin->getConfig()->getNested('auto-login.lifetime_seconds') ?? 2592000);
-
-            if ($existingSessionId !== null) {
-                $refreshSession = (bool)($this->plugin->getConfig()->getNested('auto-login.refresh_session_on_login') ?? true);
-                if ($refreshSession) {
-                    $this->plugin->getDataProvider()->refreshSession($existingSessionId, $lifetime);
-                }
-            } else {
-                $this->plugin->getDataProvider()->createSession($sender->getName(), $ip, $lifetime);
-            }
-        }
-
-        $this->plugin->getDataProvider()->updatePlayerIp($sender);
-
-        $sender->sendMessage((string)($messages["login_success"] ?? "§aYou have successfully logged in!"));
+        $this->plugin->forceLogin($sender);
         return true;
     }
 }

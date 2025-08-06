@@ -12,11 +12,7 @@ class DataProviderFactory {
     /**
      * @param Main $plugin
      */
-    public static function create(Main $plugin): DataProviderInterface {
-        $config = $plugin->getConfig()->get('database', []);
-        if (!is_array($config)) {
-            $config = [];
-        }
+    public static function create(Main $plugin, array $config): DataProviderInterface {
         $providerType = strtolower((string)($config['provider'] ?? 'yaml'));
 
         return self::createProvider($plugin, $providerType);

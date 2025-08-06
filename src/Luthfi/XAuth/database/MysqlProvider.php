@@ -30,8 +30,28 @@ class MysqlProvider implements DataProviderInterface {
 
         $this->db = new PDO("mysql:host=" . $host . ";port=" . $port . ";dbname=" . $database, $user, $password);
         $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $this->db->exec("CREATE TABLE IF NOT EXISTS players (name VARCHAR(255) PRIMARY KEY, password VARCHAR(255), ip VARCHAR(255), locked BOOLEAN DEFAULT FALSE, registered_at INT, registration_ip VARCHAR(255), last_login_at INT, blocked_until INT DEFAULT 0, must_change_password BOOLEAN DEFAULT FALSE)");
-        $this->db->exec("CREATE TABLE IF NOT EXISTS sessions (session_id VARCHAR(255) PRIMARY KEY, player_name VARCHAR(255) NOT NULL, ip_address VARCHAR(255), login_time INT, last_activity INT, expiration_time INT, FOREIGN KEY (player_name) REFERENCES players(name) ON DELETE CASCADE)");
+
+        $this->db->exec("CREATE TABLE IF NOT EXISTS players (
+            name VARCHAR(255) PRIMARY KEY,
+            password VARCHAR(255),
+            ip VARCHAR(255),
+            locked BOOLEAN DEFAULT FALSE,
+            registered_at INT,
+            registration_ip VARCHAR(255),
+            last_login_at INT,
+            blocked_until INT DEFAULT 0,
+            must_change_password BOOLEAN DEFAULT FALSE
+        )");
+
+        $this->db->exec("CREATE TABLE IF NOT EXISTS sessions (
+            session_id VARCHAR(255) PRIMARY KEY,
+            player_name VARCHAR(255) NOT NULL,
+            ip_address VARCHAR(255),
+            login_time INT,
+            last_activity INT,
+            expiration_time INT,
+            FOREIGN KEY (player_name) REFERENCES players(name) ON DELETE CASCADE
+        )");
     }
 
     public function getPlayer(Player|OfflinePlayer $player): ?array {
@@ -169,12 +189,13 @@ class MysqlProvider implements DataProviderInterface {
         $maxSessions = (int)($this->plugin->getConfig()->getNested('auto-login.max_sessions_per_player') ?? 5);
 
         if (count($sessions) >= $maxSessions) {
-            // Sort sessions by login_time ascending to find the oldest
-            usort($sessions, function($a, $b) {
-                return ($a['login_time'] ?? 0) <=> ($b['login_time'] ?? 0);
+            uasort($sessions, function($a, $b) {
+                return ($a['last_activity'] ?? 0) <=> ($b['last_activity'] ?? 0);
             });
-            // Delete the oldest session
-            $this->deleteSession((string)($sessions[0]['session_id'] ?? ''));
+            $sessionsToDelete = array_slice($sessions, 0, count($sessions) - $maxSessions + 1, true);
+            foreach (array_keys($sessionsToDelete) as $sessionId) {
+                $this->deleteSession($sessionId);
+            }
         }
 
         $sessionId = bin2hex(random_bytes(16));
@@ -243,6 +264,14 @@ class MysqlProvider implements DataProviderInterface {
         $stmt = $this->db->prepare("DELETE FROM sessions WHERE expiration_time <= :current_time");
         $stmt->bindValue(":current_time", time(), PDO::PARAM_INT);
         $stmt->execute();
+    }
+
+    public function getRegistrationCountByIp(string $ipAddress): int {
+        $stmt = $this->db->prepare("SELECT COUNT(*) as count FROM players WHERE registration_ip = :ip");
+        $stmt->bindValue(":ip", $ipAddress);
+        $stmt->execute();
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return is_array($result) ? (int)($result['count'] ?? 0) : 0;
     }
 
     public function close(): void {

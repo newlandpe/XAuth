@@ -1,14 +1,32 @@
 messages:
+  unexpected_error: "§cПроизошла непредвиденная ошибка. Пожалуйста, попробуйте еще раз."
+  command_only_in_game: "§cЭту команду можно использовать только в игре."
+  command_only_in_console: "§cЭту команду можно использовать только в консоли."
+  config_outdated_warning: "Ваш config.yml устарел! Пожалуйста, обновите его до последней версии."
   register_prompt: "Пожалуйста, зарегистрируйтесь с помощью /register <пароль> <подтвердите_пароль>"
   register_success: "Вы успешно зарегистрировались!"
+  register_usage: "§cИспользование: /register <пароль> <подтвердите_пароль>"
+  register_command_description: "Зарегистрировать свой аккаунт"
+  register_command_usage: "§cИспользование: /register <пароль> <подтвердите_пароль>"
+  register_form_closed: "Вы закрыли форму регистрации."
+  already_registered: "§cВы уже зарегистрированы. Пожалуйста, используйте /login <пароль> для входа."
+  not_registered: "§cВы не зарегистрированы. Пожалуйста, используйте /register <пароль> для регистрации."
   login_prompt: "Пожалуйста, войдите с помощью /login <пароль>"
   login_success: "Вы успешно вошли!"
+  login_usage: "§cИспользование: /login <пароль>"
+  login_command_description: "Войти в свой аккаунт"
+  login_command_usage: "§cИспользование: /login <пароль>"
+  login_form_closed: "Вы закрыли форму входа."
+  login_attempts_exceeded: "§cВы превысили количество попыток входа. Пожалуйста, попробуйте еще раз через {minutes} минут."
+  login_timeout: "§cВы слишком долго входили в систему."
+  already_logged_in: "§cВы уже вошли в систему."
+  incorrect_password: "§cНеверный пароль. Пожалуйста, попробуйте ещё раз."
   command_not_allowed: "§cВы должны войти, чтобы использовать эту команду."
   chat_not_allowed: "§cВы должны войти, чтобы общаться в чате."
-  incorrect_password: "§cНеверный пароль. Пожалуйста, попробуйте ещё раз."
-  not_registered: "§cВы не зарегистрированы. Пожалуйста, используйте /register <пароль> для регистрации."
-  already_registered: "§cВы уже зарегистрированы. Пожалуйста, используйте /login <пароль> для входа."
-  already_logged_in: "§cВы уже вошли в систему."
+  ip_join_limit_exceeded: "§cПревышен лимит подключений для вашего IP-адреса."
+  ip_registration_limit_exceeded: "§cПревышен лимит регистраций для вашего IP-адреса."
+  geoip.kick.country: "§cВаша страна не разрешена на этом сервере."
+  geoip.kick.local: "§cПодключения из локальных сетей не разрешены."
   password_too_short: "§cВаш пароль слишком короткий. Он должен содержать не менее {length} символов."
   password_too_long: "§cВаш пароль слишком длинный. Он не должен превышать {length} символов."
   password_mismatch: "§cПароли не совпадают."
@@ -16,6 +34,32 @@ messages:
   password_no_lowercase: "§cПароль должен содержать хотя бы одну строчную букву."
   password_no_number: "§cПароль должен содержать хотя бы одну цифру."
   password_no_symbol: "§cПароль должен содержать хотя бы один специальный символ."
+  password_is_weak: "§cВаш пароль слишком распространён или слишком слабый. Пожалуйста, выберите более надёжный."
+  change_password_success: "§aВаш пароль успешно изменён."
+  force_change_password_prompt: "§eПо соображениям безопасности, вы должны сменить свой пароль, прежде чем продолжить."
+  force_change_password_form_title: "Принудительная смена пароля"
+  force_change_password_closed: "§cВы должны сменить свой пароль, чтобы продолжить."
+  resetpassword_command_description: "Сбросить свой пароль"
+  resetpassword_command_usage: "§cИспользование: /resetpassword <старый_пароль> <новый_пароль>"
+  account_locked_by_admin: "§cВаш аккаунт был заблокирован администратором."
+  account_unregistered_by_admin: "§eВаш аккаунт был удалён администратором. Пожалуйста, зарегистрируйтесь снова."
+  session_ended_by_admin: "§eВаша сессия была завершена администратором. Пожалуйста, войдите снова."
+  xauth_command_description: "Команды администратора XAuth"
+  xauth_command_usage: "§cИспользование: /xauth <подкоманда> [аргументы]"
+  xauth_unknown_subcommand: "§cНеизвестная подкоманда. Используйте /xauth help для списка команд."
+  xauth_help_message: |
+    §e--- Помощь XAuth ---
+    §f/xauth help: §7Показать это руководство.
+    §f/xauth lock <игрок>: §7Заблокировать аккаунт игрока.
+    §f/xauth unlock <игрок>: §7Разблокировать аккаунт игрока.
+    §f/xauth lookup <игрок>: §7Посмотреть информацию об игроке.
+    §f/xauth setpassword <игрок> <пароль>: §7Установить новый пароль для игрока.
+    §f/xauth unregister <игрок>: §7Удалить регистрацию игрока.
+    §f/xauth reload: §7Перезагрузить конфигурацию XAuth.
+    §f/xauth forcepasswordchange <игрок>: §7Принудительно сменить пароль игрока при следующем входе.
+    §f/xauth migrate-provider <исходный_провайдер> <целевой_провайдер>: §7Миграция данных игроков между провайдерами (только консоль).
+    §f/xauth status <подкоманда>: §7Управление статусом аутентификации онлайн-игроков.
+    §f/xauth sessions <подкоманда>: §7Управление сессиями игрока.
   xauth_setpassword_usage: "§cИспользование: /xauth setpassword <игрок> <пароль>"
   xauth_unregister_usage: "§cИспользование: /xauth unregister <игрок>"
   xauth_reload_success: "§aКонфигурация XAuth перезагружена."
@@ -31,32 +75,21 @@ messages:
   xauth_player_locked: "§aИгрок '{player_name}' был заблокирован."
   xauth_unlock_usage: "§cИспользование: /xauth unlock <игрок>"
   xauth_player_unlocked: "§aИгрок '{player_name}' был разблокирован."
-  xauth_unknown_subcommand: "§cНеизвестная подкоманда. Используйте /xauth help для списка команд."
-  xauth_help_message: |
-    §e--- Помощь XAuth ---
-    §f/xauth help: §7Показать это руководство.
-    §f/xauth lock <игрок>: §7Заблокировать аккаунт игрока.
-    §f/xauth unlock <игрок>: §7Разблокировать аккаунт игрока.
-    §f/xauth lookup <игрок>: §7Посмотреть информацию об игроке.
-    §f/xauth setpassword <игрок> <пароль>: §7Установить новый пароль для игрока.
-    §f/xauth unregister <игрок>: §7Удалить регистрацию игрока.
-    §f/xauth reload: §7Перезагрузить конфигурацию XAuth.
-    §f/xauth forcepasswordchange <игрок>: §7Принудительно сменить пароль игрока при следующем входе.
-    §f/xauth migrate-provider <исходный_провайдер> <целевой_провайдер>: §7Миграция данных игроков между провайдерами (только консоль).
-    §f/xauth status <подкоманда>: §7Управление статусом аутентификации онлайн-игроков.
-    §f/xauth sessions <подкоманда>: §7Управление сессиями игрока.
-  command_only_in_game: "§cЭту команду можно использовать только в игре."
-  account_locked_by_admin: "§cВаш аккаунт был заблокирован администратором."
-  login_usage: "§cИспользование: /login <пароль>"
-  register_usage: "§cИспользование: /register <пароль> <подтвердите_пароль>"
-  change_password_success: "§aВаш пароль успешно изменён."
-  unregister_success: "§aАккаунт игрока успешно удалён."
+  xauth_forcepasswordchange_usage: "§cИспользование: /xauth forcepasswordchange <игрок>"
+  xauth_forcepasswordchange_success: "§aИгрок {player_name} будет вынужен сменить свой пароль при следующем входе."
+  xauth_forcepasswordchange_now: "§aИгрок {player_name} сейчас принудительно меняет свой пароль."
+  xauth_migrate_usage: "§cИспользование: /xauth migrate-provider <исходный_провайдер> <целевой_провайдер>"
+  xauth_migration_start: "§eНачало миграции из '{source_provider}' в '{destination_provider}'..."
+  xauth_migration_fetching_data: "§eПолучение всех данных игроков из источника..."
+  xauth_migration_found_players: "§aНайдено {count} игроков для миграции."
+  xauth_migration_complete: "§aМиграция завершена!"
+  xauth_migration_migrated_count: "§a- Мигрировано: {count} игроков"
+  xauth_migration_skipped_count: "§e- Пропущено (уже существуют): {count} игроков"
+  xauth_migration_error_prefix: "§cОшибка: "
+  xauth_migration_unexpected_error_prefix: "§cПроизошла непредвиденная ошибка во время миграции: "
   set_password_success: "§aПароль игрока успешно установлен."
+  unregister_success: "§aАккаунт игрока успешно удалён."
   player_not_registered: "§cИгрок не зарегистрирован."
-  login_attempts_exceeded: "§cВы превысили количество попыток входа. Пожалуйста, попробуйте еще раз через {minutes} минут."
-  login_timeout: "§cВы слишком долго входили в систему."
-  session_ended_by_admin: "§eВаша сессия была завершена администратором. Пожалуйста, войдите снова."
-  unexpected_error: "§cПроизошла непредвиденная ошибка. Пожалуйста, попробуйте еще раз."
   xauth_status_usage: "§cИспользование: /xauth status <list|end> [игрок]"
   xauth_status_list_header: "§e--- Онлайн игроки ({count}) ---"
   xauth_status_authenticated: "§aАутентифицирован"
@@ -78,33 +111,6 @@ messages:
   xauth_sessions_terminateall_success: "§aВсе сессии для {player_name} завершены."
   xauth_sessions_cleanup_success: "§aИстекшие сессии очищены."
   xauth_sessions_unknown_subcommand: "§cНеизвестная подкоманда сессий. Используйте /xauth sessions <list|terminate|terminateall|cleanup>"
-  xauth_forcepasswordchange_usage: "§cИспользование: /xauth forcepasswordchange <игрок>"
-  xauth_forcepasswordchange_success: "§aИгрок {player_name} будет вынужен сменить свой пароль при следующем входе."
-  xauth_forcepasswordchange_now: "§aИгрок {player_name} сейчас принудительно меняет свой пароль."
-  force_change_password_prompt: "§eПо соображениям безопасности, вы должны сменить свой пароль, прежде чем продолжить."
-  force_change_password_form_title: "Принудительная смена пароля"
-  command_only_in_console: "§cЭту команду можно использовать только в консоли."
-  xauth_migrate_usage: "§cИспользование: /xauth migrate-provider <исходный_провайдер> <целевой_провайдер>"
-  login_form_closed: "Вы закрыли форму входа."
-  register_form_closed: "Вы закрыли форму регистрации."
-  force_change_password_closed: "§cВы должны сменить свой пароль, чтобы продолжить."
-  xauth_command_description: "Команды администратора XAuth"
-  xauth_command_usage: "§cИспользование: /xauth <подкоманда> [аргументы]"
-  login_command_description: "Войти в свой аккаунт"
-  login_command_usage: "§cИспользование: /login <пароль>"
-  register_command_description: "Зарегистрировать свой аккаунт"
-  register_command_usage: "§cИспользование: /register <пароль> <подтвердите_пароль>"
-  resetpassword_command_description: "Сбросить свой пароль"
-  resetpassword_command_usage: "§cИспользование: /resetpassword <старый_пароль> <новый_пароль>"
-  config_outdated_warning: "Ваш config.yml устарел! Пожалуйста, обновите его до последней версии."
-  xauth_migration_start: "§eНачало миграции из '{source_provider}' в '{destination_provider}'..."
-  xauth_migration_fetching_data: "§eПолучение всех данных игроков из источника..."
-  xauth_migration_found_players: "§aНайдено {count} игроков для миграции."
-  xauth_migration_complete: "§aМиграция завершена!"
-  xauth_migration_migrated_count: "§a- Мигрировано: {count} игроков"
-  xauth_migration_skipped_count: "§e- Пропущено (уже существуют): {count} игроков"
-  xauth_migration_error_prefix: "§cОшибка: "
-  xauth_migration_unexpected_error_prefix: "§cПроизошла непредвиденная ошибка во время миграции: "
 
 forms:
   login:
@@ -127,6 +133,17 @@ forms:
     old_password_label: "Старый пароль"
     new_password_label: "Новый пароль"
     confirm_new_password_label: "Подтвердите новый пароль"
+
+placeholders:
+  is_authenticated:
+    yes: "Да"
+    no: "Нет"
+  is_registered:
+    yes: "Да"
+    no: "Нет"
+  is_locked:
+    yes: "Да"
+    no: "Нет"
 
 titles:
   register_prompt:

@@ -53,5 +53,7 @@ interface DataProviderInterface {
 
     public function cleanupExpiredSessions(): void;
 
+    public function getRegistrationCountByIp(string $ipAddress): int;
+
     public function close(): void;
 }

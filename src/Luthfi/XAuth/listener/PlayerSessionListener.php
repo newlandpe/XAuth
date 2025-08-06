@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Luthfi\XAuth\listener;
 
-use Luthfi\XAuth\event\PlayerLoginEvent;
+use Luthfi\XAuth\event\PlayerDeauthenticateEvent;
 use Luthfi\XAuth\Main;
 use pocketmine\event\Listener;
 use pocketmine\event\player\PlayerJoinEvent;
@@ -20,6 +20,28 @@ class PlayerSessionListener implements Listener {
     }
 
     public function onPlayerPreLogin(PlayerPreLoginEvent $event): void {
+        $ip = $event->getIp();
+        $ipLimits = (array)$this->plugin->getConfig()->get('ip_limits');
+        $maxJoinsPerIp = (int)($ipLimits['max_joins_per_ip'] ?? 0);
+
+        if ($maxJoinsPerIp > 0) {
+            $onlinePlayers = $this->plugin->getServer()->getOnlinePlayers();
+            $ipCounts = [];
+            foreach ($onlinePlayers as $player) {
+                $playerIp = $player->getNetworkSession()->getIp();
+                if (!isset($ipCounts[$playerIp])) {
+                    $ipCounts[$playerIp] = 0;
+                }
+                $ipCounts[$playerIp]++;
+            }
+
+            if (isset($ipCounts[$ip]) && $ipCounts[$ip] >= $maxJoinsPerIp) {
+                $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["ip_join_limit_exceeded"] ?? "Connection limit exceeded for your IP address.");
+                $event->setKickFlag(PlayerPreLoginEvent::KICK_FLAG_BANNED, $message);
+                return;
+            }
+        }
+
         $bruteforceConfig = (array)$this->plugin->getConfig()->get('bruteforce_protection');
         if (! (bool)($bruteforceConfig['kick_at_pre_login'] ?? true)) {
             return;
@@ -29,75 +51,39 @@ class PlayerSessionListener implements Listener {
 
         if ($this->plugin->getDataProvider()->isPlayerLocked($name)) {
             $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["account_locked_by_admin"] ?? "");
-            $event->setKickReason(PlayerPreLoginEvent::KICK_REASON_PLUGIN, $message);
+            $event->setKickFlag(PlayerPreLoginEvent::KICK_FLAG_BANNED, $message);
             return;
         }
 
-        $enabled = (bool)($bruteforceConfig['enabled'] ?? false);
-        $maxAttempts = (int)($bruteforceConfig['max_attempts'] ?? 0);
-        $blockTimeMinutes = (int)($bruteforceConfig['block_time_minutes'] ?? 10);
-
-        if ($enabled && $this->plugin->getDataProvider()->getBlockedUntil($name) > time()) {
+        if ((bool)($bruteforceConfig['enabled'] ?? false) && $this->plugin->getDataProvider()->getBlockedUntil($name) > time()) {
             $remainingMinutes = (int)ceil(($this->plugin->getDataProvider()->getBlockedUntil($name) - time()) / 60);
             $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["login_attempts_exceeded"] ?? "");
             $message = str_replace('{minutes}', (string)$remainingMinutes, $message);
-            $event->setKickReason(PlayerPreLoginEvent::KICK_REASON_PLUGIN, $message);
+            $event->setKickFlag(PlayerPreLoginEvent::KICK_FLAG_BANNED, $message);
         }
     }
 
     public function onJoin(PlayerJoinEvent $event): void {
         $player = $event->getPlayer();
+        $authManager = $this->plugin->getAuthManager();
 
-        if ($this->plugin->getAuthManager()->isPlayerAuthenticated($player)) {
+        if ($authManager->isPlayerAuthenticated($player)) {
             return;
         }
 
-        $playerData = $this->plugin->getDataProvider()->getPlayer($player);
+        $this->plugin->protectPlayer($player);
 
+        $playerData = $this->plugin->getDataProvider()->getPlayer($player);
         if ($playerData !== null) {
             $autoLoginEnabled = (bool)($this->plugin->getConfig()->getNested("auto-login.enabled") ?? false);
-
             if ($autoLoginEnabled) {
-                $currentIp = $player->getNetworkSession()->getIp();
-                $foundValidAutoLogin = false;
-
-                // Try persistent sessions first
-                $playerSessions = $this->plugin->getDataProvider()->getSessionsByPlayer($player->getName());
-                foreach ($playerSessions as $sessionId => $sessionData) {
-                    if (($sessionData['ip_address'] ?? '') === $currentIp && ($sessionData['expiration_time'] ?? 0) > time()) {
-                        $this->plugin->getAuthManager()->authenticatePlayer($player);
-                        $this->plugin->getDataProvider()->updateSessionLastActivity($sessionId);
-
-                        $refreshSession = (bool)($this->plugin->getConfig()->getNested('auto-login.refresh_session_on_login') ?? true);
-                        if ($refreshSession) {
-                            $newLifetime = (int)($this->plugin->getConfig()->getNested('auto-login.lifetime_seconds') ?? 2592000);
-                            $this->plugin->getDataProvider()->refreshSession($sessionId, $newLifetime);
-                        }
-
-                        $loginEvent = new PlayerLoginEvent($player, true);
-                        $loginEvent->call();
-
-                        if ($loginEvent->isAuthenticationDelayed() || $loginEvent->isCancelled()) {
-                            $this->plugin->getAuthManager()->deauthenticatePlayer($player);
-                            return;
-                        }
-
-                        if ($this->plugin->getDataProvider()->mustChangePassword($player->getName())) {
-                            $this->plugin->startForcePasswordChange($player);
-                            return;
-                        }
-
-                        $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["login_success"] ?? "");
-                        $player->sendMessage($message);
-                        $this->plugin->sendTitleMessage($player, "login_success");
-                        $this->plugin->clearTitleTask($player);
-                        $foundValidAutoLogin = true;
-                        break;
+                $sessions = $this->plugin->getDataProvider()->getSessionsByPlayer($player->getName());
+                $ip = $player->getNetworkSession()->getIp();
+                foreach ($sessions as $sessionId => $sessionData) {
+                    if (($sessionData['ip_address'] ?? '') === $ip && ($sessionData['expiration_time'] ?? 0) > time()) {
+                        $this->plugin->forceLogin($player);
+                        return;
                     }
-                }
-
-                if ($foundValidAutoLogin) {
-                    return;
                 }
             }
 
@@ -126,11 +112,6 @@ class PlayerSessionListener implements Listener {
     }
 
     public function onPlayerQuit(PlayerQuitEvent $event): void {
-        $player = $event->getPlayer();
-        $this->plugin->cancelKickTask($player);
-        if($this->plugin->getAuthManager()->isPlayerAuthenticated($player)){
-            $this->plugin->getAuthManager()->deauthenticatePlayer($player);
-        }
-        $this->plugin->clearTitleTask($player);
+        (new PlayerDeauthenticateEvent($event->getPlayer(), true))->call();
     }
 }

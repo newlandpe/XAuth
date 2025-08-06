@@ -8,13 +8,14 @@ use Luthfi\XAuth\event\PlayerAuthActionEvent;
 use Luthfi\XAuth\Main;
 use pocketmine\event\block\BlockBreakEvent;
 use pocketmine\event\block\BlockPlaceEvent;
+use pocketmine\event\Cancellable;
 use pocketmine\event\entity\EntityDamageEvent;
+use pocketmine\event\entity\EntityItemPickupEvent;
 use pocketmine\event\inventory\InventoryOpenEvent;
 use pocketmine\event\Listener;
 use pocketmine\event\player\PlayerChatEvent;
 use pocketmine\event\player\PlayerDropItemEvent;
 use pocketmine\event\player\PlayerInteractEvent;
-use pocketmine\event\entity\EntityItemPickupEvent;
 use pocketmine\event\player\PlayerItemUseEvent;
 use pocketmine\event\player\PlayerMoveEvent;
 use pocketmine\event\server\CommandEvent;
@@ -28,17 +29,68 @@ class PlayerActionListener implements Listener {
         $this->plugin = $plugin;
     }
 
-    public function onPlayerMove(PlayerMoveEvent $event): void {
-        $player = $event->getPlayer();
+    private function handleAction(Player $player, string $actionType, Cancellable $event): void {
+        if ($this->plugin->getAuthManager()->isPlayerAuthenticated($player)) {
+            return;
+        }
+
+        $restrictions = (array)$this->plugin->getConfig()->get("restrictions");
+
+        $configKeyMap = [
+            PlayerAuthActionEvent::ACTION_MOVE => 'allow_movement',
+            PlayerAuthActionEvent::ACTION_CHAT => 'allow_chat',
+            PlayerAuthActionEvent::ACTION_BLOCK_BREAK => 'allow_block_breaking',
+            PlayerAuthActionEvent::ACTION_BLOCK_PLACE => 'allow_block_placing',
+            PlayerAuthActionEvent::ACTION_INTERACT => 'allow_block_interaction',
+            PlayerAuthActionEvent::ACTION_ITEM_USE => 'allow_item_use',
+            PlayerAuthActionEvent::ACTION_DROP_ITEM => 'allow_item_dropping',
+            PlayerAuthActionEvent::ACTION_PICKUP_ITEM => 'allow_item_pickup',
+            PlayerAuthActionEvent::ACTION_INVENTORY_CHANGE => 'allow_inventory_open',
+            PlayerAuthActionEvent::ACTION_DAMAGE => 'allow_damage',
+        ];
+
+        $configKey = $configKeyMap[$actionType] ?? null;
+
+        if ($configKey === null) {
+            $this->plugin->getLogger()->warning("Unknown action type or no direct config mapping for: " . $actionType);
+            return; // Or default to allowing the action
+        }
+
+        $allowAction = (bool)($restrictions[$configKey] ?? true); // Default to true if not set in config
+
         if ($this->plugin->isForcingPasswordChange($player)) {
+            if (!$allowAction) {
+                $event->cancel();
+                return;
+            }
+            return;
+        }
+
+        if (!$allowAction) {
             $event->cancel();
             return;
         }
-        if (!$this->plugin->getAuthManager()->isPlayerAuthenticated($player)) {
-            $authEvent = new PlayerAuthActionEvent($player, PlayerAuthActionEvent::ACTION_MOVE);
-            $authEvent->call();
-            if (!$authEvent->isCancelled()) {
-                $event->cancel();
+
+        $authEvent = new PlayerAuthActionEvent($player, $actionType);
+        $authEvent->call();
+
+        if ($authEvent->isCancelled()) {
+            $event->cancel();
+        }
+    }
+
+    public function onPlayerMove(PlayerMoveEvent $event): void {
+        $this->handleAction($event->getPlayer(), PlayerAuthActionEvent::ACTION_MOVE, $event);
+    }
+
+    public function onPlayerChat(PlayerChatEvent $event): void {
+        $player = $event->getPlayer();
+
+        $this->handleAction($player, PlayerAuthActionEvent::ACTION_CHAT, $event);
+        if ($event->isCancelled()) {
+            $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["chat_not_allowed"] ?? "");
+            if (!empty($message)) {
+                $player->sendMessage($message);
             }
         }
     }
@@ -50,7 +102,10 @@ class PlayerActionListener implements Listener {
         }
 
         if ($this->plugin->isForcingPasswordChange($player)) {
-            $player->sendMessage((string)(((array)$this->plugin->getCustomMessages()->get("messages"))["force_change_password_prompt"] ?? ""));
+            $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["force_change_password_prompt"] ?? "");
+            if (!empty($message)) {
+                $player->sendMessage($message);
+            }
             $event->cancel();
             return;
         }
@@ -59,136 +114,62 @@ class PlayerActionListener implements Listener {
             return;
         }
 
-        $commandParts = explode(' ', $event->getCommand());
-        $commandMap = $this->plugin->getServer()->getCommandMap();
-        $command = $commandMap->getCommand($commandParts[0]);
+        $restrictions = (array)$this->plugin->getConfig()->get("restrictions");
+        $command = strtolower(explode(' ', $event->getCommand())[0]);
+        $allowedCommands = array_map('strtolower', (array)($restrictions['allowed_commands'] ?? []));
 
-        if ($command !== null) {
-            $allowedCommands = ['login', 'register'];
-            if (in_array($command->getName(), $allowedCommands, true)) {
-                return;
-            }
-            foreach ($command->getAliases() as $alias) {
-                if (in_array($alias, $allowedCommands, true)) {
-                    return;
-                }
-            }
+        if (in_array($command, $allowedCommands, true)) {
+            return;
         }
 
         $authEvent = new PlayerAuthActionEvent($player, PlayerAuthActionEvent::ACTION_COMMAND);
         $authEvent->call();
         if ($authEvent->isCancelled()) {
-            return;
+            return; // Allow other plugins to handle it
         }
 
-        $messages = (array)$this->plugin->getCustomMessages()->get("messages");
-        if (isset($messages["command_not_allowed"])) {
-            $player->sendMessage((string)$messages["command_not_allowed"]);
+        $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["command_not_allowed"] ?? "");
+        if (!empty($message)) {
+            $player->sendMessage($message);
         }
         $event->cancel();
     }
 
-    public function onPlayerChat(PlayerChatEvent $event): void {
-        $player = $event->getPlayer();
-        if (!$this->plugin->getAuthManager()->isPlayerAuthenticated($player)) {
-            $authEvent = new PlayerAuthActionEvent($player, PlayerAuthActionEvent::ACTION_CHAT);
-            $authEvent->call();
-            if ($authEvent->isCancelled()) {
-                return;
-            }
-            $messages = (array)$this->plugin->getCustomMessages()->get("messages");
-            if (isset($messages["chat_not_allowed"])) {
-                $player->sendMessage((string)$messages["chat_not_allowed"]);
-            }
-            $event->cancel();
-        }
-    }
-
     public function onPlayerInteract(PlayerInteractEvent $event): void {
-        $player = $event->getPlayer();
-        if (!$this->plugin->getAuthManager()->isPlayerAuthenticated($player)) {
-            $authEvent = new PlayerAuthActionEvent($player, PlayerAuthActionEvent::ACTION_INTERACT);
-            $authEvent->call();
-            if (!$authEvent->isCancelled()) {
-                $event->cancel();
-            }
-        }
+        $this->handleAction($event->getPlayer(), PlayerAuthActionEvent::ACTION_INTERACT, $event);
     }
 
     public function onPlayerDropItem(PlayerDropItemEvent $event): void {
-        $player = $event->getPlayer();
-        if (!$this->plugin->getAuthManager()->isPlayerAuthenticated($player)) {
-            $authEvent = new PlayerAuthActionEvent($player, PlayerAuthActionEvent::ACTION_DROP_ITEM);
-            $authEvent->call();
-            if (!$authEvent->isCancelled()) {
-                $event->cancel();
-            }
-        }
+        $this->handleAction($event->getPlayer(), PlayerAuthActionEvent::ACTION_DROP_ITEM, $event);
     }
 
     public function onEntityDamage(EntityDamageEvent $event): void {
         $entity = $event->getEntity();
-        if ($entity instanceof Player && !$this->plugin->getAuthManager()->isPlayerAuthenticated($entity)) {
-            $authEvent = new PlayerAuthActionEvent($entity, PlayerAuthActionEvent::ACTION_DAMAGE);
-            $authEvent->call();
-            if (!$authEvent->isCancelled()) {
-                $event->cancel();
-            }
-        }
-    }
-
-    public function onEntityItemPickup(EntityItemPickupEvent $event): void {
-        $entity = $event->getEntity();
-        if ($entity instanceof Player && !$this->plugin->getAuthManager()->isPlayerAuthenticated($entity)) {
-            $authEvent = new PlayerAuthActionEvent($entity, PlayerAuthActionEvent::ACTION_PICKUP_ITEM);
-            $authEvent->call();
-            if (!$authEvent->isCancelled()) {
-                $event->cancel();
-            }
+        if ($entity instanceof Player) {
+            $this->handleAction($entity, PlayerAuthActionEvent::ACTION_DAMAGE, $event);
         }
     }
 
     public function onBlockBreak(BlockBreakEvent $event): void {
-        $player = $event->getPlayer();
-        if (!$this->plugin->getAuthManager()->isPlayerAuthenticated($player)) {
-            $authEvent = new PlayerAuthActionEvent($player, PlayerAuthActionEvent::ACTION_BLOCK_BREAK);
-            $authEvent->call();
-            if (!$authEvent->isCancelled()) {
-                $event->cancel();
-            }
-        }
+        $this->handleAction($event->getPlayer(), PlayerAuthActionEvent::ACTION_BLOCK_BREAK, $event);
     }
 
     public function onBlockPlace(BlockPlaceEvent $event): void {
-        $player = $event->getPlayer();
-        if (!$this->plugin->getAuthManager()->isPlayerAuthenticated($player)) {
-            $authEvent = new PlayerAuthActionEvent($player, PlayerAuthActionEvent::ACTION_BLOCK_PLACE);
-            $authEvent->call();
-            if (!$authEvent->isCancelled()) {
-                $event->cancel();
-            }
-        }
+        $this->handleAction($event->getPlayer(), PlayerAuthActionEvent::ACTION_BLOCK_PLACE, $event);
     }
 
     public function onPlayerItemUse(PlayerItemUseEvent $event): void {
-        $player = $event->getPlayer();
-        if (!$this->plugin->getAuthManager()->isPlayerAuthenticated($player)) {
-            $authEvent = new PlayerAuthActionEvent($player, PlayerAuthActionEvent::ACTION_ITEM_USE);
-            $authEvent->call();
-            if (!$authEvent->isCancelled()) {
-                $event->cancel();
-            }
+        $this->handleAction($event->getPlayer(), PlayerAuthActionEvent::ACTION_ITEM_USE, $event);
+    }
+
+    public function onEntityItemPickup(EntityItemPickupEvent $event): void {
+        $entity = $event->getEntity();
+        if ($entity instanceof Player) {
+            $this->handleAction($entity, PlayerAuthActionEvent::ACTION_PICKUP_ITEM, $event);
         }
     }
 
     public function onInventoryOpen(InventoryOpenEvent $event): void {
-        $player = $event->getPlayer();
-        if (!$this->plugin->getAuthManager()->isPlayerAuthenticated($player)) {
-            $authEvent = new PlayerAuthActionEvent($player, PlayerAuthActionEvent::ACTION_INVENTORY_CHANGE);
-            $authEvent->call();
-            if (!$authEvent->isCancelled()) {
-                $event->cancel();
-            }
-        }
+        $this->handleAction($event->getPlayer(), PlayerAuthActionEvent::ACTION_INVENTORY_CHANGE, $event);
     }
 }

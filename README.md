@@ -9,8 +9,10 @@ A simple, secure, and extensible authentication plugin for PocketMine-MP, modern
 - **Player Authentication:** Secure registration and login system for your server.
 - **Password Management:** Players can reset their passwords.
 - **Admin Controls:** Server administrators can manage player accounts (lock/unlock, lookup, set password, unregister).
+- **Session Management:** Secure session management with configurable expiration and IP-based validation.
 - **Multi-language Support:** Customizable messages for various languages.
 - **Extensible Design:** Built with extensibility in mind, allowing for future integrations like 2FA.
+- **PlaceholderAPI Integration:** Display authentication status and other data through placeholders.
 
 ## Installation
 
@@ -25,6 +27,7 @@ The plugin generates a `config.yml` file in `plugin_data/XAuth/` upon first run.
 - Language settings
 - Password requirements
 - Auto-login options
+- Session management settings
 - Title message settings
 
 Language messages are located in `plugin_data/XAuth/lang/`. You can modify existing language files or add new ones.
@@ -54,6 +57,15 @@ Here are the commands available in XAuth:
     - `/xauth sessions terminate <session_id>`: Terminate a specific session.
     - `/xauth sessions terminateall <player>`: Terminate all sessions for a player.
     - `/xauth sessions cleanup`: Clean up all expired sessions.
+
+### Permissions
+
+| Permission | Description | Default |
+| --- | --- | --- |
+| `xauth.command.register` | Allow player to register an account | `true` |
+| `xauth.command.login` | Allow player to login to their account | `true` |
+| `xauth.command.resetpassword` | Allow player to reset their password | `true` |
+| `xauth.command.admin` | Allows usage of the /xauth command | `op` |
 
 ## API for Developers
 
@@ -216,6 +228,18 @@ $this->getServer()->getPluginManager()->registerEvents(new MyUnregisterListener(
 $this->getServer()->getPluginManager()->registerEvents(new MyRegisterListener(), $this);
 $this->getServer()->getPluginManager()->registerEvents(new MyChangePasswordListener(), $this);
 ```
+
+## PlaceholderAPI Integration
+
+XAuth supports PlaceholderAPI to display player authentication status and other information. The following placeholders are available:
+
+| Placeholder | Description |
+| --- | --- |
+| `%xauth_is_authenticated%` | Returns "Yes" if the player is authenticated, otherwise "No". |
+| `%xauth_is_registered%` | Returns "Yes" if the player is registered, otherwise "No". |
+| `%xauth_is_locked%` | Returns "Yes" if the player's account is locked, otherwise "No". |
+| `%xauth_authenticated_players%` | Returns the number of authenticated players online. |
+| `%xauth_unauthenticated_players%` | Returns the number of unauthenticated players online. |
 
 ## Contributing
 

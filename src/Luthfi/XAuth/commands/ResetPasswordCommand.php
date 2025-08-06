@@ -53,14 +53,23 @@ class ResetPasswordCommand extends Command {
         $oldPassword = (string)($args[0] ?? '');
         $newPassword = (string)($args[1] ?? '');
 
-        if (!password_verify($oldPassword, (string)($playerData["password"] ?? ''))) {
+        $passwordHasher = $this->plugin->getPasswordHasher();
+        if ($passwordHasher === null) {
+            $this->plugin->getLogger()->error("PasswordHasher is not initialized.");
+            $sender->sendMessage((string)($messages["unexpected_error"] ?? "§cAn unexpected error occurred. Please try again."));
+            return false;
+        }
+
+        $currentHashedPassword = (string)($playerData["password"] ?? '');
+
+        if (!$passwordHasher->verifyPassword($oldPassword, $currentHashedPassword)) {
             $sender->sendMessage((string)($messages["incorrect_password"] ?? "§cIncorrect password."));
             return false;
         }
 
-        if (password_needs_rehash((string)($playerData["password"] ?? ''), PASSWORD_BCRYPT)) {
-            $newHashedPassword = password_hash($oldPassword, PASSWORD_BCRYPT);
-            $this->plugin->getDataProvider()->changePassword($sender, $newHashedPassword);
+        if ($passwordHasher->needsRehash($currentHashedPassword)) {
+            $currentHashedPassword = $passwordHasher->hashPassword($oldPassword);
+            $this->plugin->getDataProvider()->changePassword($sender, $currentHashedPassword);
         }
 
         if (($message = $this->plugin->getPasswordValidator()->validatePassword($newPassword)) !== null) {
@@ -68,7 +77,7 @@ class ResetPasswordCommand extends Command {
             return false;
         }
 
-        $newHashedPassword = password_hash($newPassword, PASSWORD_BCRYPT);
+        $newHashedPassword = $passwordHasher->hashPassword($newPassword);
         $this->plugin->getDataProvider()->changePassword($sender, $newHashedPassword);
 
         (new PlayerChangePasswordEvent($sender))->call();

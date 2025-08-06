@@ -1,14 +1,30 @@
 messages:
+  unexpected_error: "§cTerjadi kesalahan tak terduga. Silakan coba lagi."
+  command_only_in_game: "§cPerintah ini hanya bisa digunakan dalam game."
+  command_only_in_console: "§cPerintah ini hanya dapat digunakan di konsol."
+  config_outdated_warning: "Konfigurasi Anda sudah usang! Harap perbarui ke versi terbaru."
   register_prompt: "Silakan daftar dengan /register <kata_sandi> <konfirmasi_kata_sandi>"
   register_success: "Anda telah berhasil terdaftar!"
+  register_usage: "§cPenggunaan: /register <kata_sandi> <konfirmasi_kata_sandi>"
+  register_command_description: "Daftarkan akun Anda"
+  register_command_usage: "§cPenggunaan: /register <kata_sandi> <konfirmasi_kata_sandi>"
+  register_form_closed: "Anda telah menutup formulir pendaftaran."
+  already_registered: "§cAnda sudah terdaftar. Silakan gunakan /login <kata_sandi> untuk masuk."
+  not_registered: "§cAnda belum terdaftar. Silakan gunakan /register <kata_sandi> untuk mendaftar."
   login_prompt: "Silakan masuk dengan /login <kata_sandi>"
   login_success: "Anda telah berhasil masuk!"
+  login_usage: "§cPenggunaan: /login <kata_sandi>"
+  login_command_description: "Masuk ke akun Anda"
+  login_command_usage: "§cPenggunaan: /login <kata_sandi>"
+  login_form_closed: "Anda telah menutup formulir login."
+  login_attempts_exceeded: "§cAnda telah melebihi jumlah percobaan login. Silakan coba lagi dalam {minutes} menit."
+  login_timeout: "§cAnda terlalu lama untuk masuk."
+  already_logged_in: "§cAnda sudah masuk."
+  incorrect_password: "§cKata sandi salah. Silakan coba lagi."
   command_not_allowed: "§cAnda harus masuk untuk menggunakan perintah ini."
   chat_not_allowed: "§cAnda harus masuk untuk mengobrol."
-  incorrect_password: "§cKata sandi salah. Silakan coba lagi."
-  not_registered: "§cAnda belum terdaftar. Silakan gunakan /register <kata_sandi> untuk mendaftar."
-  already_registered: "§cAnda sudah terdaftar. Silakan gunakan /login <kata_sandi> untuk masuk."
-  already_logged_in: "§cAnda sudah masuk."
+  ip_join_limit_exceeded: "§cBatas koneksi untuk alamat IP Anda terlampaui."
+  ip_registration_limit_exceeded: "§cBatas pendaftaran untuk alamat IP Anda terlampaui."
   password_too_short: "§cKata sandi Anda terlalu pendek. Harus minimal {length} karakter."
   password_too_long: "§cKata sandi Anda terlalu panjang. Tidak boleh lebih dari {length} karakter."
   password_mismatch: "§cKata sandi tidak cocok."
@@ -16,6 +32,32 @@ messages:
   password_no_lowercase: "§cKata sandi harus mengandung setidaknya satu huruf kecil."
   password_no_number: "§cKata sandi harus mengandung setidaknya satu angka."
   password_no_symbol: "§cKata sandi harus mengandung setidaknya satu karakter khusus."
+  password_is_weak: "§cKata sandi Anda terlalu umum atau terlalu lemah. Silakan pilih yang lebih kuat."
+  change_password_success: "§aKata sandi Anda telah berhasil diubah."
+  force_change_password_prompt: "§eUntuk alasan keamanan, Anda harus mengubah kata sandi Anda sebelum dapat melanjutkan."
+  force_change_password_form_title: "Perubahan Kata Sandi Paksa"
+  force_change_password_closed: "§cAnda harus mengubah kata sandi Anda untuk melanjutkan."
+  resetpassword_command_description: "Setel ulang kata sandi Anda"
+  resetpassword_command_usage: "§cPenggunaan: /resetpassword <kata_sandi_lama> <kata_sandi_baru>"
+  account_locked_by_admin: "§cAkun Anda telah dikunci oleh administrator."
+  account_unregistered_by_admin: "§eAkun Anda telah dibatalkan pendaftarannya oleh administrator. Silakan daftar lagi."
+  session_ended_by_admin: "§eSesi Anda telah diakhiri oleh administrator. Silakan masuk lagi."
+  xauth_command_description: "Perintah admin XAuth"
+  xauth_command_usage: "§cPenggunaan: /xauth <subperintah> [argumen]"
+  xauth_unknown_subcommand: "§cPerintah tidak dikenal. Gunakan /xauth help untuk daftar perintah."
+  xauth_help_message: |
+    §e--- Bantuan XAuth ---
+    §f/xauth help: §7Tampilkan panduan bantuan ini.
+    §f/xauth lock <pemain>: §7Kunci akun pemain.
+    §f/xauth unlock <pemain>: §7Buka kunci akun pemain.
+    §f/xauth lookup <pemain>: §7Cari informasi pemain.
+    §f/xauth setpassword <pemain> <kata_sandi>: §7Atur kata sandi baru untuk pemain.
+    §f/xauth unregister <pemain>: §7Batalkan pendaftaran akun pemain.
+    §f/xauth reload: §7Muat ulang konfigurasi XAuth.
+    §f/xauth forcepasswordchange <pemain>: §7Memaksa pemain untuk mengubah kata sandi mereka pada login berikutnya.
+    §f/xauth migrate-provider <sumber_penyedia> <tujuan_penyedia>: §7Migrasi data pemain antar penyedia (hanya konsol).
+    §f/xauth status <subperintah>: §7Kelola status otentikasi pemain online.
+    §f/xauth sessions <subperintah>: §7Kelola sesi pemain.
   xauth_setpassword_usage: "§cPenggunaan: /xauth setpassword <pemain> <kata_sandi>"
   xauth_unregister_usage: "§cPenggunaan: /xauth unregister <pemain>"
   xauth_reload_success: "§aKonfigurasi XAuth dimuat ulang."
@@ -31,32 +73,21 @@ messages:
   xauth_player_locked: "§aPemain '{player_name}' telah dikunci."
   xauth_unlock_usage: "§cPenggunaan: /xauth unlock <pemain>"
   xauth_player_unlocked: "§aPemain '{player_name}' telah dibuka kuncinya."
-  xauth_unknown_subcommand: "§cPerintah tidak dikenal. Gunakan /xauth help untuk daftar perintah."
-  xauth_help_message: |
-    §e--- Bantuan XAuth ---
-    §f/xauth help: §7Tampilkan panduan bantuan ini.
-    §f/xauth lock <pemain>: §7Kunci akun pemain.
-    §f/xauth unlock <pemain>: §7Buka kunci akun pemain.
-    §f/xauth lookup <pemain>: §7Cari informasi pemain.
-    §f/xauth setpassword <pemain> <kata_sandi>: §7Atur kata sandi baru untuk pemain.
-    §f/xauth unregister <pemain>: §7Batalkan pendaftaran akun pemain.
-    §f/xauth reload: §7Muat ulang konfigurasi XAuth.
-    §f/xauth forcepasswordchange <pemain>: §7Memaksa pemain untuk mengubah kata sandi mereka pada login berikutnya.
-    §f/xauth migrate-provider <sumber_penyedia> <tujuan_penyedia>: §7Migrasi data pemain antar penyedia (hanya konsol).
-    §f/xauth status <subperintah>: §7Kelola status otentikasi pemain online.
-    §f/xauth sessions <subperintah>: §7Kelola sesi pemain.
-  command_only_in_game: "§cPerintah ini hanya bisa digunakan dalam game."
-  account_locked_by_admin: "§cAkun Anda telah dikunci oleh administrator."
-  login_usage: "§cPenggunaan: /login <kata_sandi>"
-  register_usage: "§cPenggunaan: /register <kata_sandi> <konfirmasi_kata_sandi>"
-  change_password_success: "§aKata sandi Anda telah berhasil diubah."
-  unregister_success: "§aAkun pemain telah berhasil dihapus."
+  xauth_forcepasswordchange_usage: "§cPenggunaan: /xauth forcepasswordchange <pemain>"
+  xauth_forcepasswordchange_success: "§aPemain {player_name} akan dipaksa untuk mengubah kata sandi mereka pada login berikutnya."
+  xauth_forcepasswordchange_now: "§aPemain {player_name} sekarang dipaksa untuk mengubah kata sandi mereka."
+  xauth_migrate_usage: "§cPenggunaan: /xauth migrate-provider <sumber_penyedia> <tujuan_penyedia>"
+  xauth_migration_start: "§eMemulai migrasi dari '{source_provider}' ke '{destination_provider}'..."
+  xauth_migration_fetching_data: "§eMengambil semua data pemain dari sumber..."
+  xauth_migration_found_players: "§aDitemukan {count} pemain untuk dimigrasi."
+  xauth_migration_complete: "§aMigrasi selesai!"
+  xauth_migration_migrated_count: "§a- Dimigrasi: {count} pemain"
+  xauth_migration_skipped_count: "§e- Dilewati (sudah ada): {count} pemain"
+  xauth_migration_error_prefix: "§cKesalahan: "
+  xauth_migration_unexpected_error_prefix: "§cTerjadi kesalahan tak terduga selama migrasi: "
   set_password_success: "§aKata sandi pemain telah berhasil diatur."
+  unregister_success: "§aAkun pemain telah berhasil dihapus."
   player_not_registered: "§cPemain tidak terdaftar."
-  login_attempts_exceeded: "§cAnda telah melebihi jumlah percobaan login. Silakan coba lagi dalam {minutes} menit."
-  login_timeout: "§cAnda terlalu lama untuk masuk."
-  session_ended_by_admin: "§eSesi Anda telah diakhiri oleh administrator. Silakan masuk lagi."
-  unexpected_error: "§cTerjadi kesalahan tak terduga. Silakan coba lagi."
   xauth_status_usage: "§cPenggunaan: /xauth status <list|end> [pemain]"
   xauth_status_list_header: "§e--- Pemain Online ({count}) ---"
   xauth_status_authenticated: "§aTerautentikasi"
@@ -78,33 +109,6 @@ messages:
   xauth_sessions_terminateall_success: "§aSemua sesi untuk {player_name} dihentikan."
   xauth_sessions_cleanup_success: "§aSesi kedaluwarsa dibersihkan."
   xauth_sessions_unknown_subcommand: "§cSub-perintah sesi tidak dikenal. Gunakan /xauth sessions <list|terminate|terminateall|cleanup>"
-  xauth_forcepasswordchange_usage: "§cPenggunaan: /xauth forcepasswordchange <pemain>"
-  xauth_forcepasswordchange_success: "§aPemain {player_name} akan dipaksa untuk mengubah kata sandi mereka pada login berikutnya."
-  xauth_forcepasswordchange_now: "§aPemain {player_name} sekarang dipaksa untuk mengubah kata sandi mereka."
-  force_change_password_prompt: "§eUntuk alasan keamanan, Anda harus mengubah kata sandi Anda sebelum dapat melanjutkan."
-  force_change_password_form_title: "Perubahan Kata Sandi Paksa"
-  command_only_in_console: "§cPerintah ini hanya dapat digunakan di konsol."
-  xauth_migrate_usage: "§cPenggunaan: /xauth migrate-provider <sumber_penyedia> <tujuan_penyedia>"
-  login_form_closed: "Anda telah menutup formulir login."
-  register_form_closed: "Anda telah menutup formulir pendaftaran."
-  force_change_password_closed: "§cAnda harus mengubah kata sandi Anda untuk melanjutkan."
-  xauth_command_description: "Perintah admin XAuth"
-  xauth_command_usage: "§cPenggunaan: /xauth <subperintah> [argumen]"
-  login_command_description: "Masuk ke akun Anda"
-  login_command_usage: "§cPenggunaan: /login <kata_sandi>"
-  register_command_description: "Daftarkan akun Anda"
-  register_command_usage: "§cPenggunaan: /register <kata_sandi> <konfirmasi_kata_sandi>"
-  resetpassword_command_description: "Setel ulang kata sandi Anda"
-  resetpassword_command_usage: "§cPenggunaan: /resetpassword <kata_sandi_lama> <kata_sandi_baru>"
-  config_outdated_warning: "Konfigurasi Anda sudah usang! Harap perbarui ke versi terbaru."
-  xauth_migration_start: "§eMemulai migrasi dari '{source_provider}' ke '{destination_provider}'..."
-  xauth_migration_fetching_data: "§eMengambil semua data pemain dari sumber..."
-  xauth_migration_found_players: "§aDitemukan {count} pemain untuk dimigrasi."
-  xauth_migration_complete: "§aMigrasi selesai!"
-  xauth_migration_migrated_count: "§a- Dimigrasi: {count} pemain"
-  xauth_migration_skipped_count: "§e- Dilewati (sudah ada): {count} pemain"
-  xauth_migration_error_prefix: "§cKesalahan: "
-  xauth_migration_unexpected_error_prefix: "§cTerjadi kesalahan tak terduga selama migrasi: "
 
 forms:
   login:
@@ -127,6 +131,17 @@ forms:
     old_password_label: "Kata Sandi Lama"
     new_password_label: "Kata Sandi Baru"
     confirm_new_password_label: "Konfirmasi Kata Sandi Baru"
+
+placeholders:
+  is_authenticated:
+    yes: "Ya"
+    no: "Tidak"
+  is_registered:
+    yes: "Ya"
+    no: "Tidak"
+  is_locked:
+    yes: "Ya"
+    no: "Tidak"
 
 titles:
   register_prompt:
