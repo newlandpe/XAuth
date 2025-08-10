@@ -12,7 +12,7 @@ A simple, secure, and extensible authentication plugin for PocketMine-MP, modern
 - **Session Management:** Secure session management with configurable expiration and IP-based validation.
 - **Multi-language Support:** Customizable messages for various languages.
 - **Extensible Design:** Built with extensibility in mind, allowing for future integrations like 2FA.
-- **PlaceholderAPI Integration:** Display authentication status and other data through placeholders.
+- **[PlaceholderAPI](https://github.com/MohamadRZ4/Placeholder) Integration:** Display authentication status and other data through placeholders.
 
 ## Installation
 
