@@ -72,7 +72,7 @@ messages:
     §e--- Информация об игроке: {player_name} ---
     §fЗарегистрирован: §7{registered_at}
     §fIP регистрации: §7{registration_ip}
-    §fПоследний вход IP: §7{last_login_ip}
+    §fIP последнего входа: §7{last_login_ip}
     §fПоследний вход: §7{last_login_at}
     §fЗаблокирован: §7{locked_status}
   xauth_lock_usage: "§cИспользование: /xauth lock <игрок>"
