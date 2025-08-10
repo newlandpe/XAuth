@@ -220,6 +220,90 @@ class MyChangePasswordListener implements Listener {
 }
 ```
 
+### PlayerAuthenticateEvent
+
+Dispatched when a player is successfully authenticated.
+
+```php
+use Luthfi\XAuth\event\PlayerAuthenticateEvent;
+use pocketmine\event\Listener;
+
+class MyAuthenticateListener implements Listener {
+
+    /**
+     * @param PlayerAuthenticateEvent $event
+     * @priority NORMAL
+     */
+    public function onAuthenticate(PlayerAuthenticateEvent $event): void {
+        $player = $event->getPlayer();
+        $player->sendMessage("You have been authenticated!");
+    }
+}
+```
+
+### PlayerDeauthenticateEvent
+
+Dispatched when a player is deauthenticated.
+
+```php
+use Luthfi\XAuth\event\PlayerDeauthenticateEvent;
+use pocketmine\event\Listener;
+
+class MyDeauthenticateListener implements Listener {
+
+    /**
+     * @param PlayerDeauthenticateEvent $event
+     * @priority NORMAL
+     */
+    public function onDeauthenticate(PlayerDeauthenticateEvent $event): void {
+        $player = $event->getPlayer();
+        $player->sendMessage("You have been deauthenticated.");
+    }
+}
+```
+
+### PlayerStateRestoreEvent
+
+Dispatched when a player's state (inventory, effects, etc.) is restored after authentication. This event is cancellable.
+
+```php
+use Luthfi\XAuth\event\PlayerStateRestoreEvent;
+use pocketmine\event\Listener;
+
+class MyStateRestoreListener implements Listener {
+
+    /**
+     * @param PlayerStateRestoreEvent $event
+     * @priority NORMAL
+     */
+    public function onStateRestore(PlayerStateRestoreEvent $event): void {
+        $player = $event->getPlayer();
+        $player->sendMessage("Your state has been restored.");
+    }
+}
+```
+
+### PlayerStateSaveEvent
+
+Dispatched when a player's state is saved before authentication.
+
+```php
+use Luthfi\XAuth\event\PlayerStateSaveEvent;
+use pocketmine\event\Listener;
+
+class MyStateSaveListener implements Listener {
+
+    /**
+     * @param PlayerStateSaveEvent $event
+     * @priority NORMAL
+     */
+    public function onStateSave(PlayerStateSaveEvent $event): void {
+        $player = $event->getPlayer();
+        $player->sendMessage("Your state has been saved.");
+    }
+}
+```
+
 To listen for these events, register your listener class in your plugin's `onEnable()` method:
 
 ```php
@@ -227,6 +311,10 @@ $this->getServer()->getPluginManager()->registerEvents(new MyLoginListener(), $t
 $this->getServer()->getPluginManager()->registerEvents(new MyUnregisterListener(), $this);
 $this->getServer()->getPluginManager()->registerEvents(new MyRegisterListener(), $this);
 $this->getServer()->getPluginManager()->registerEvents(new MyChangePasswordListener(), $this);
+$this->getServer()->getPluginManager()->registerEvents(new MyAuthenticateListener(), $this);
+$this->getServer()->getPluginManager()->registerEvents(new MyDeauthenticateListener(), $this);
+$this->getServer()->getPluginManager()->registerEvents(new MyStateRestoreListener(), $this);
+$this->getServer()->getPluginManager()->registerEvents(new MyStateSaveListener(), $this);
 ```
 
 ## PlaceholderAPI Integration
