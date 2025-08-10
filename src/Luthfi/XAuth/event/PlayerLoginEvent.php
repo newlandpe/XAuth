@@ -9,6 +9,11 @@ use pocketmine\event\CancellableTrait;
 use pocketmine\event\player\PlayerEvent;
 use pocketmine\player\Player;
 
+/**
+ * Called when a player needs to log in. This event is called before authentication is attempted.
+ * It can be cancelled to prevent the player from being asked to log in.
+ * It also handles cases for auto-login.
+ */
 class PlayerLoginEvent extends PlayerEvent implements Cancellable {
     use CancellableTrait;
 

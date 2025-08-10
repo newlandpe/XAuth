@@ -9,8 +9,10 @@ use Luthfi\XAuth\Main;
 use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
 use pocketmine\player\Player;
+use pocketmine\plugin\Plugin;
+use pocketmine\plugin\PluginOwned;
 
-class RegisterCommand extends Command {
+class RegisterCommand extends Command implements PluginOwned {
 
     private Main $plugin;
 
@@ -83,5 +85,9 @@ class RegisterCommand extends Command {
 
         $sender->sendMessage((string)($messages["register_success"] ?? "§aYou have successfully registered!"));
         return true;
+    }
+
+    public function getOwningPlugin(): Plugin {
+        return $this->plugin;
     }
 }

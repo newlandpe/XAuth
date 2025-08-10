@@ -8,6 +8,10 @@ use Luthfi\XAuth\PlayerState;
 use pocketmine\event\player\PlayerEvent;
 use pocketmine\player\Player;
 
+/**
+ * Called after a player's state (inventory, position, etc.) has been saved
+ * because they need to authenticate.
+ */
 class PlayerStateSaveEvent extends PlayerEvent {
 
     private PlayerState $state;

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Luthfi\XAuth;
 
 use Luthfi\XAuth\commands\LoginCommand;
+use Luthfi\XAuth\commands\LogoutCommand;
 use Luthfi\XAuth\commands\RegisterCommand;
 use Luthfi\XAuth\commands\ResetPasswordCommand;
 use Luthfi\XAuth\commands\XAuthCommand;
@@ -12,12 +13,13 @@ use Luthfi\XAuth\database\DataProviderFactory;
 use Luthfi\XAuth\database\DataProviderInterface;
 use Luthfi\XAuth\event\PlayerAuthenticateEvent;
 use Luthfi\XAuth\event\PlayerDeauthenticateEvent;
+use Luthfi\XAuth\expansion\XAuthExpansion;
 use Luthfi\XAuth\event\PlayerStateRestoreEvent;
 use Luthfi\XAuth\event\PlayerStateSaveEvent;
 use Luthfi\XAuth\listener\GeoIPListener;
 use Luthfi\XAuth\listener\PlayerActionListener;
 use Luthfi\XAuth\listener\PlayerSessionListener;
-use Luthfi\XAuth\expansion\XAuthExpansion;
+use Luthfi\XAuth\utils\MigrationManager;
 use MohamadRZ4\Placeholder\PlaceholderAPI;
 use pocketmine\entity\effect\EffectInstance;
 use pocketmine\entity\effect\VanillaEffects;
@@ -67,6 +69,10 @@ class Main extends PluginBase implements Listener {
         $language = (string)$this->configData->get("language", "en");
         $this->languageMessages = new Config($this->getDataFolder() . "lang/" . $language . ".yml", Config::YAML);
         $this->checkConfigVersion();
+
+        $migrationManager = new MigrationManager($this);
+        $migrationManager->prepareMigration();
+
         $this->dataProvider = DataProviderFactory::create($this, $this->configData->get('database'));
         $this->authManager = new AuthManager($this);
         $this->passwordValidator = new PasswordValidator($this);
@@ -84,6 +90,7 @@ class Main extends PluginBase implements Listener {
         $this->getServer()->getCommandMap()->register("register", new RegisterCommand($this));
         $this->getServer()->getCommandMap()->register("login", new LoginCommand($this));
         $this->getServer()->getCommandMap()->register("resetpassword", new ResetPasswordCommand($this));
+        $this->getServer()->getCommandMap()->register("logout", new LogoutCommand($this));
         $this->getServer()->getCommandMap()->register("xauth", new XAuthCommand($this));
 
         $autoLoginEnabled = (bool)($this->configData->getNested("auto-login.enabled") ?? false);
@@ -108,6 +115,8 @@ class Main extends PluginBase implements Listener {
         if ($placeholderAPI instanceof PlaceholderAPI) {
             $placeholderAPI->registerExpansion(new XAuthExpansion($this));
         }
+
+        $migrationManager->runMigration();
     }
 
     private function checkConfigVersion(): void {
@@ -533,7 +542,7 @@ class Main extends PluginBase implements Listener {
         }
 
         $message = (string)(((array)$this->getCustomMessages()->get("messages"))["login_success"] ?? "");
-        $player->sendMessage($mesaage);
+        $player->sendMessage($message);
         $this->sendTitleMessage($player, "login_success");
         $this->scheduleClearTitleTask($player, 2 * 20);
         $this->restorePlayerState($player);

@@ -43,7 +43,7 @@ class PlayerSessionListener implements Listener {
         }
 
         $bruteforceConfig = (array)$this->plugin->getConfig()->get('bruteforce_protection');
-        if (! (bool)($bruteforceConfig['kick_at_pre_login'] ?? true)) {
+        if (!(bool)($bruteforceConfig['kick_at_pre_login'] ?? true)) {
             return;
         }
 
@@ -75,6 +75,11 @@ class PlayerSessionListener implements Listener {
 
         $playerData = $this->plugin->getDataProvider()->getPlayer($player);
         if ($playerData !== null) {
+            if ($this->plugin->getDataProvider()->mustChangePassword($player->getName())) {
+                $this->plugin->startForcePasswordChange($player);
+                return;
+            }
+
             $autoLoginEnabled = (bool)($this->plugin->getConfig()->getNested("auto-login.enabled") ?? false);
             if ($autoLoginEnabled) {
                 $sessions = $this->plugin->getDataProvider()->getSessionsByPlayer($player->getName());

@@ -7,6 +7,10 @@ namespace Luthfi\XAuth\event;
 use pocketmine\event\player\PlayerEvent;
 use pocketmine\player\Player;
 
+/**
+ * Called when a player is deauthenticated (logged out).
+ * This can happen via the /logout command or when the player quits the server.
+ */
 class PlayerDeauthenticateEvent extends PlayerEvent {
 
     private bool $isQuit;

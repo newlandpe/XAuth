@@ -9,8 +9,10 @@ use Luthfi\XAuth\Main;
 use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
 use pocketmine\player\Player;
+use pocketmine\plugin\Plugin;
+use pocketmine\plugin\PluginOwned;
 
-class LoginCommand extends Command {
+class LoginCommand extends Command implements PluginOwned {
 
     private Main $plugin;
 
@@ -112,5 +114,9 @@ class LoginCommand extends Command {
 
         $this->plugin->forceLogin($sender);
         return true;
+    }
+
+    public function getOwningPlugin(): Plugin {
+        return $this->plugin;
     }
 }

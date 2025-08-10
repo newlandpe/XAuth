@@ -10,9 +10,11 @@ use Luthfi\XAuth\event\PlayerUnregisterEvent;
 use Luthfi\XAuth\Main;
 use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
+use pocketmine\plugin\Plugin;
+use pocketmine\plugin\PluginOwned;
 use pocketmine\Server;
 
-class XAuthCommand extends Command {
+class XAuthCommand extends Command implements PluginOwned {
 
     private Main $plugin;
 
@@ -23,8 +25,8 @@ class XAuthCommand extends Command {
             (string)($messages["xauth_command_description"] ?? "XAuth admin commands"),
             (string)($messages["xauth_command_usage"] ?? "/xauth <subcommand> [args]")
         );
-        $this->plugin = $plugin;
         $this->setPermission("xauth.command.admin");
+        $this->plugin = $plugin;
     }
 
     public function execute(CommandSender $sender, string $label, array $args): bool {
@@ -176,12 +178,9 @@ class XAuthCommand extends Command {
                 (new PlayerUnregisterEvent($offlinePlayer))->call();
                 $sender->sendMessage((string)($messages["unregister_success"] ?? "§aPlayer account has been unregistered successfully."));
 
-                // Якщо гравець онлайн, деавтентифікуємо його і примушуємо до реєстрації
                 $player = $this->plugin->getServer()->getPlayerExact($playerName);
                 if ($player !== null) {
-                    // Викликаємо PlayerDeauthenticateEvent, щоб Main.php обробив логіку
                     (new PlayerDeauthenticateEvent($player, false))->call();
-                    // Оскільки гравець тепер незареєстрований, йому потрібно показати форму реєстрації
                     $this->plugin->getFormManager()->sendRegisterForm($player);
                     $player->sendMessage((string)($messages["account_unregistered_by_admin"] ?? "§eYour account has been unregistered by an administrator. Please register again."));
                 }
@@ -345,7 +344,6 @@ class XAuthCommand extends Command {
                         $this->plugin->getDataProvider()->deleteSession($sessionId);
                         $sender->sendMessage(str_replace("{session_id}", $sessionId, (string)($messages["xauth_sessions_terminate_success"] ?? "§aSession {session_id} terminated.")));
 
-                        // Якщо гравець онлайн, деавтентифікуємо його
                         $player = $this->plugin->getServer()->getPlayerExact($playerName);
                         if ($player !== null && $this->plugin->getAuthManager()->isPlayerAuthenticated($player)) {
                             (new PlayerDeauthenticateEvent($player, false))->call();
@@ -361,7 +359,6 @@ class XAuthCommand extends Command {
                         $this->plugin->getDataProvider()->deleteAllSessionsForPlayer($playerName);
                         $sender->sendMessage(str_replace("{player_name}", $playerName, (string)($messages["xauth_sessions_terminateall_success"] ?? "§aAll sessions for {player_name} terminated.")));
 
-                        // Якщо гравець онлайн, деавтентифікуємо його
                         $player = $this->plugin->getServer()->getPlayerExact($playerName);
                         if ($player !== null && $this->plugin->getAuthManager()->isPlayerAuthenticated($player)) {
                             (new PlayerDeauthenticateEvent($player, false))->call();
@@ -385,10 +382,43 @@ class XAuthCommand extends Command {
                 $this->plugin->reloadConfig();
                 $sender->sendMessage((string)($messages["xauth_reload_success"] ?? "§aXAuth configuration reloaded."));
                 break;
+            case "checkpassword":
+                if (count($args) !== 2) {
+                    $sender->sendMessage("§cUsage: /xauth checkpassword <player> <password>");
+                    return false;
+                }
+                $playerName = (string)($args[0] ?? '');
+                $password = (string)($args[1] ?? '');
+
+                $playerData = $this->plugin->getDataProvider()->getPlayer($this->plugin->getServer()->getOfflinePlayer($playerName));
+                if ($playerData === null) {
+                    $sender->sendMessage("§cPlayer not registered.");
+                    return false;
+                }
+
+                $storedHash = (string)($playerData["password"] ?? '');
+                $passwordHasher = $this->plugin->getPasswordHasher();
+
+                if ($passwordHasher === null) {
+                    $sender->sendMessage("§cPassword hasher is not available.");
+                    return false;
+                }
+
+                $isValid = $passwordHasher->verifyPassword($password, $storedHash);
+
+                $sender->sendMessage("§e--- Password Check for " . $playerName . " ---");
+                $sender->sendMessage("§fPassword to check: §e" . $password);
+                $sender->sendMessage("§fStored Hash: §e" . $storedHash);
+                $sender->sendMessage("§fVerification Result: " . ($isValid ? "§aMATCH" : "§cNO MATCH"));
+                break;
             default:
                 $sender->sendMessage((string)($messages["xauth_unknown_subcommand"] ?? "§cUnknown subcommand. Use /xauth help for a list of commands."));
                 break;
         }
         return true;
+    }
+
+    public function getOwningPlugin(): Plugin {
+        return $this->plugin;
     }
 }

@@ -7,6 +7,9 @@ namespace Luthfi\XAuth\event;
 use pocketmine\event\player\PlayerEvent;
 use pocketmine\player\Player;
 
+/**
+ * Called after a player successfully changes their password.
+ */
 class PlayerChangePasswordEvent extends PlayerEvent {
 
     public function __construct(Player $player) {

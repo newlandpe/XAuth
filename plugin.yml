@@ -17,6 +17,9 @@ permissions:
   xauth.command.resetpassword:
     description: "Allow player to reset their password"
     default: true
+  xauth.command.logout:
+    description: "Allow player to logout from their account"
+    default: true
   xauth.command.admin:
     description: "Allows usage of the /xauth command"
     default: op

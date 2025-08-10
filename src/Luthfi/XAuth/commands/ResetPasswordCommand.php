@@ -9,8 +9,10 @@ use Luthfi\XAuth\Main;
 use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
 use pocketmine\player\Player;
+use pocketmine\plugin\Plugin;
+use pocketmine\plugin\PluginOwned;
 
-class ResetPasswordCommand extends Command {
+class ResetPasswordCommand extends Command implements PluginOwned {
 
     private Main $plugin;
 
@@ -21,8 +23,8 @@ class ResetPasswordCommand extends Command {
             (string)($messages["resetpassword_command_description"] ?? "Reset your password"),
             (string)($messages["resetpassword_command_usage"] ?? "/resetpassword <old_password> <new_password>")
         );
-        $this->plugin = $plugin;
         $this->setPermission("xauth.command.resetpassword");
+        $this->plugin = $plugin;
     }
 
     public function execute(CommandSender $sender, string $label, array $args): bool {
@@ -84,5 +86,9 @@ class ResetPasswordCommand extends Command {
 
         $sender->sendMessage((string)($messages["change_password_success"] ?? "§aYour password has been changed successfully."));
         return true;
+    }
+
+    public function getOwningPlugin(): Plugin {
+        return $this->plugin;
     }
 }

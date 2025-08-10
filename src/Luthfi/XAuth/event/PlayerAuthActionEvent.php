@@ -9,6 +9,11 @@ use pocketmine\event\CancellableTrait;
 use pocketmine\event\player\PlayerEvent;
 use pocketmine\player\Player;
 
+/**
+ * Called when an unauthenticated player tries to perform a protected action,
+ * such as moving, sending a command, or breaking a block. This event can be cancelled
+ * to allow the action.
+ */
 class PlayerAuthActionEvent extends PlayerEvent implements Cancellable 
 {
     use CancellableTrait;
