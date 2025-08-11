@@ -37,7 +37,7 @@ interface DataProviderInterface {
 
     public function registerPlayerRaw(string $playerName, array $data): void;
 
-    public function createSession(string $playerName, string $ipAddress, int $lifetimeSeconds): string;
+    public function createSession(string $playerName, string $ipAddress, string $clientId, int $lifetimeSeconds): string;
 
     public function getSession(string $sessionId): ?array;
 

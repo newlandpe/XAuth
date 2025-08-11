@@ -173,7 +173,7 @@ class SqliteProvider implements DataProviderInterface {
         $stmt->execute();
     }
 
-    public function createSession(string $playerName, string $ipAddress, int $lifetimeSeconds): string {
+    public function createSession(string $playerName, string $ipAddress, string $clientId, int $lifetimeSeconds): string {
         $playerNameLower = strtolower($playerName);
         $sessions = $this->getSessionsByPlayer($playerNameLower);
         $maxSessions = (int)($this->plugin->getConfig()->getNested('auto-login.max_sessions_per_player') ?? 5);
@@ -192,10 +192,11 @@ class SqliteProvider implements DataProviderInterface {
         $loginTime = time();
         $expirationTime = $loginTime + $lifetimeSeconds;
 
-        $stmt = $this->db->prepare("INSERT INTO sessions (session_id, player_name, ip_address, login_time, last_activity, expiration_time) VALUES (:session_id, :player_name, :ip_address, :login_time, :last_activity, :expiration_time)");
+        $stmt = $this->db->prepare("INSERT INTO sessions (session_id, player_name, ip_address, client_id, login_time, last_activity, expiration_time) VALUES (:session_id, :player_name, :ip_address, :client_id, :login_time, :last_activity, :expiration_time)");
         $stmt->bindValue(":session_id", $sessionId, SQLITE3_TEXT);
         $stmt->bindValue(":player_name", $playerNameLower, SQLITE3_TEXT);
         $stmt->bindValue(":ip_address", $ipAddress, SQLITE3_TEXT);
+        $stmt->bindValue(":client_id", $clientId, SQLITE3_TEXT);
         $stmt->bindValue(":login_time", $loginTime, SQLITE3_INTEGER);
         $stmt->bindValue(":last_activity", $loginTime, SQLITE3_INTEGER);
         $stmt->bindValue(":expiration_time", $expirationTime, SQLITE3_INTEGER);

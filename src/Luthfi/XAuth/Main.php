@@ -515,29 +515,40 @@ class Main extends PluginBase implements Listener {
         $this->getDataProvider()->updatePlayerIp($player);
         $this->authManager->authenticatePlayer($player);
 
-        $autoLoginEnabled = (bool)($this->configData->getNested('auto-login.enabled') ?? false);
+        $autoLoginConfig = (array)$this->configData->get('auto-login', []);
+        $autoLoginEnabled = (bool)($autoLoginConfig['enabled'] ?? false);
+        $securityLevel = (int)($autoLoginConfig['security_level'] ?? 1);
 
         if ($autoLoginEnabled) {
             $sessions = $this->getDataProvider()->getSessionsByPlayer($player->getName());
             $ip = $player->getNetworkSession()->getIp();
-            $existingSessionId = null;
+            $cid = $player->getNetworkSession()->getUniqueId();
+            $lifetime = (int)($autoLoginConfig['lifetime_seconds'] ?? 2592000);
+            $refreshSession = (bool)($autoLoginConfig['refresh_session_on_login'] ?? true);
 
-            foreach ($sessions as $sessionId => $sessionData) {
-                if (($sessionData['ip_address'] ?? '') === $ip) {
-                    $existingSessionId = $sessionId;
-                    break;
+            $existingSessionId = null;
+            if ($securityLevel === 1) {
+                foreach ($sessions as $sessionId => $sessionData) {
+                    if (($sessionData['ip_address'] ?? '') === $ip && ($sessionData['client_id'] ?? null) === $cid) {
+                        $existingSessionId = $sessionId;
+                        break;
+                    }
+                }
+            } elseif ($securityLevel === 0) {
+                foreach ($sessions as $sessionId => $sessionData) {
+                    if (($sessionData['ip_address'] ?? '') === $ip) {
+                        $existingSessionId = $sessionId;
+                        break;
+                    }
                 }
             }
 
-            $lifetime = (int)($this->configData->getNested('auto-login.lifetime_seconds') ?? 2592000);
-
             if ($existingSessionId !== null) {
-                $refreshSession = (bool)($this->configData->getNested('auto-login.refresh_session_on_login') ?? true);
                 if ($refreshSession) {
                     $this->getDataProvider()->refreshSession($existingSessionId, $lifetime);
                 }
             } else {
-                $this->getDataProvider()->createSession($player->getName(), $ip, $lifetime);
+                $this->getDataProvider()->createSession($player->getName(), $ip, $cid, $lifetime);
             }
         }
 

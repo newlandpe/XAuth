@@ -183,7 +183,7 @@ class MysqlProvider implements DataProviderInterface {
         $stmt->execute();
     }
 
-    public function createSession(string $playerName, string $ipAddress, int $lifetimeSeconds): string {
+    public function createSession(string $playerName, string $ipAddress, string $clientId, int $lifetimeSeconds): string {
         $playerNameLower = strtolower($playerName);
         $sessions = $this->getSessionsByPlayer($playerNameLower);
         $maxSessions = (int)($this->plugin->getConfig()->getNested('auto-login.max_sessions_per_player') ?? 5);
@@ -202,10 +202,11 @@ class MysqlProvider implements DataProviderInterface {
         $loginTime = time();
         $expirationTime = $loginTime + $lifetimeSeconds;
 
-        $stmt = $this->db->prepare("INSERT INTO sessions (session_id, player_name, ip_address, login_time, last_activity, expiration_time) VALUES (:session_id, :player_name, :ip_address, :login_time, :last_activity, :expiration_time)");
+        $stmt = $this->db->prepare("INSERT INTO sessions (session_id, player_name, ip_address, client_id, login_time, last_activity, expiration_time) VALUES (:session_id, :player_name, :ip_address, :client_id, :login_time, :last_activity, :expiration_time)");
         $stmt->bindValue(":session_id", $sessionId);
         $stmt->bindValue(":player_name", $playerNameLower);
         $stmt->bindValue(":ip_address", $ipAddress);
+        $stmt->bindValue(":client_id", $clientId);
         $stmt->bindValue(":login_time", $loginTime, PDO::PARAM_INT);
         $stmt->bindValue(":last_activity", $loginTime, PDO::PARAM_INT);
         $stmt->bindValue(":expiration_time", $expirationTime, PDO::PARAM_INT);

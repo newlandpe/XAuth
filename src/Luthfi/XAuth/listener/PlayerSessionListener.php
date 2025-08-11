@@ -80,12 +80,31 @@ class PlayerSessionListener implements Listener {
                 return;
             }
 
-            $autoLoginEnabled = (bool)($this->plugin->getConfig()->getNested("auto-login.enabled") ?? false);
+            $autoLoginConfig = (array)$this->plugin->getConfig()->get("auto-login", []);
+            $autoLoginEnabled = (bool)($autoLoginConfig["enabled"] ?? false);
+            $securityLevel = (int)($autoLoginConfig["security_level"] ?? 1);
+
             if ($autoLoginEnabled) {
                 $sessions = $this->plugin->getDataProvider()->getSessionsByPlayer($player->getName());
                 $ip = $player->getNetworkSession()->getIp();
+                $cid = $player->getNetworkSession()->getUniqueId();
+
                 foreach ($sessions as $sessionId => $sessionData) {
-                    if (($sessionData['ip_address'] ?? '') === $ip && ($sessionData['expiration_time'] ?? 0) > time()) {
+                    if (($sessionData['expiration_time'] ?? 0) <= time()) {
+                        continue;
+                    }
+
+                    $ipMatch = ($sessionData['ip_address'] ?? '') === $ip;
+                    $cidMatch = ($sessionData['client_id'] ?? null) === $cid;
+
+                    $loginSuccess = false;
+                    if ($securityLevel === 1 && $ipMatch && $cidMatch) {
+                        $loginSuccess = true;
+                    } elseif ($securityLevel === 0 && $ipMatch) {
+                        $loginSuccess = true;
+                    }
+
+                    if ($loginSuccess) {
                         $this->plugin->forceLogin($player);
                         return;
                     }
