@@ -58,6 +58,9 @@ class Main extends PluginBase implements Listener {
     /** @var array<string, PlayerState> */
     private array $protectedStates = [];
 
+    /** @var array<string, string> */
+    public array $deviceIds = [];
+
     public function onEnable(): void {
         $this->saveDefaultConfig();
         $this->saveResource("lang/en.yml");
@@ -83,7 +86,7 @@ class Main extends PluginBase implements Listener {
         $this->getServer()->getPluginManager()->registerEvents(new PlayerActionListener($this), $this);
         $this->getServer()->getPluginManager()->registerEvents(new PlayerSessionListener($this), $this);
 
-        if ((bool)($this->configData->getNested("geoip.enabled") ?? false)) {
+        if ((bool)(($this->configData->getNested("geoip.enabled") ?? false))) {
             $this->getServer()->getPluginManager()->registerEvents(new GeoIPListener($this), $this);
         }
 
@@ -519,27 +522,28 @@ class Main extends PluginBase implements Listener {
         $autoLoginEnabled = (bool)($autoLoginConfig['enabled'] ?? false);
         $securityLevel = (int)($autoLoginConfig['security_level'] ?? 1);
 
-        if ($autoLoginEnabled) {
+        $lowerPlayerName = strtolower($player->getName());
+        $deviceId = $this->deviceIds[$lowerPlayerName] ?? null;
+        unset($this->deviceIds[$lowerPlayerName]);
+
+        if ($autoLoginEnabled && $deviceId !== null) {
             $sessions = $this->getDataProvider()->getSessionsByPlayer($player->getName());
             $ip = $player->getNetworkSession()->getIp();
-            $cid = $player->getNetworkSession()->getUniqueId();
             $lifetime = (int)($autoLoginConfig['lifetime_seconds'] ?? 2592000);
             $refreshSession = (bool)($autoLoginConfig['refresh_session_on_login'] ?? true);
 
             $existingSessionId = null;
-            if ($securityLevel === 1) {
-                foreach ($sessions as $sessionId => $sessionData) {
-                    if (($sessionData['ip_address'] ?? '') === $ip && ($sessionData['client_id'] ?? null) === $cid) {
-                        $existingSessionId = $sessionId;
-                        break;
-                    }
+            foreach ($sessions as $sessionId => $sessionData) {
+                $ipMatch = ($sessionData['ip_address'] ?? '') === $ip;
+                $deviceIdMatch = ($sessionData['device_id'] ?? null) === $deviceId;
+
+                if ($securityLevel === 1 && $ipMatch && $deviceIdMatch) {
+                    $existingSessionId = $sessionId;
+                    break;
                 }
-            } elseif ($securityLevel === 0) {
-                foreach ($sessions as $sessionId => $sessionData) {
-                    if (($sessionData['ip_address'] ?? '') === $ip) {
-                        $existingSessionId = $sessionId;
-                        break;
-                    }
+                if ($securityLevel === 0 && $ipMatch) {
+                    $existingSessionId = $sessionId;
+                    break;
                 }
             }
 
@@ -548,7 +552,7 @@ class Main extends PluginBase implements Listener {
                     $this->getDataProvider()->refreshSession($existingSessionId, $lifetime);
                 }
             } else {
-                $this->getDataProvider()->createSession($player->getName(), $ip, $cid, $lifetime);
+                $this->getDataProvider()->createSession($player->getName(), $ip, $deviceId, $lifetime);
             }
         }
 

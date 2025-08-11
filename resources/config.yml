@@ -10,8 +10,8 @@ enable_titles: true
 auto-login:
   enabled: true
   # Security level for auto-login. To disable auto-login, set `enabled: false` above.
-  # 0 = IP only (low security, not recommended).
-  # 1 = IP + ClientID (recommended for most servers).
+  # 0: Low - Auto-login is based on IP address only. Works for players behind NAT, but less secure if multiple people share the same public IP.
+  # 1: High (Recommended) - Auto-login is based on a combination of IP address and a unique Device ID. More secure.
   security_level: 1
   lifetime_seconds: 2592000 # 30 days
   refresh_session_on_login: true # If true, the session lifetime will be extended on each successful auto-login.

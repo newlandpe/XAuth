@@ -132,7 +132,7 @@ class YamlProvider implements DataProviderInterface {
         $this->playerData->save();
     }
 
-    public function createSession(string $playerName, string $ipAddress, string $clientId, int $lifetimeSeconds): string {
+    public function createSession(string $playerName, string $ipAddress, string $deviceId, int $lifetimeSeconds): string {
         $playerNameLower = strtolower($playerName);
         $sessions = $this->getSessionsByPlayer($playerNameLower);
         $maxSessions = (int)($this->plugin->getConfig()->getNested('auto-login.max_sessions_per_player') ?? 5);
@@ -154,7 +154,7 @@ class YamlProvider implements DataProviderInterface {
         $this->sessionData->set($sessionId, [
             "player_name" => $playerNameLower,
             "ip_address" => $ipAddress,
-            "client_id" => $clientId,
+            "device_id" => $deviceId,
             "login_time" => $loginTime,
             "last_activity" => $loginTime,
             "expiration_time" => $expirationTime

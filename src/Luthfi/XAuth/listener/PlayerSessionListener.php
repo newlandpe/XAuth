@@ -19,6 +19,10 @@ class PlayerSessionListener implements Listener {
         $this->plugin = $plugin;
     }
 
+    /**
+     * @param PlayerPreLoginEvent $event
+     * @priority MONITOR
+     */
     public function onPlayerPreLogin(PlayerPreLoginEvent $event): void {
         $ip = $event->getIp();
         $ipLimits = (array)$this->plugin->getConfig()->get('ip_limits');
@@ -43,11 +47,17 @@ class PlayerSessionListener implements Listener {
         }
 
         $bruteforceConfig = (array)$this->plugin->getConfig()->get('bruteforce_protection');
+        $name = $event->getPlayerInfo()->getUsername();
+
+        // Capture DeviceId for later use in onJoin
+        $extraData = $event->getPlayerInfo()->getExtraData();
+        if(isset($extraData['DeviceId'])){
+            $this->plugin->deviceIds[strtolower($name)] = $extraData['DeviceId'];
+        }
+
         if (!(bool)($bruteforceConfig['kick_at_pre_login'] ?? true)) {
             return;
         }
-
-        $name = $event->getPlayerInfo()->getUsername();
 
         if ($this->plugin->getDataProvider()->isPlayerLocked($name)) {
             $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["account_locked_by_admin"] ?? "");
@@ -66,6 +76,7 @@ class PlayerSessionListener implements Listener {
     public function onJoin(PlayerJoinEvent $event): void {
         $player = $event->getPlayer();
         $authManager = $this->plugin->getAuthManager();
+        $playerName = $player->getName();
 
         if ($authManager->isPlayerAuthenticated($player)) {
             return;
@@ -75,7 +86,7 @@ class PlayerSessionListener implements Listener {
 
         $playerData = $this->plugin->getDataProvider()->getPlayer($player);
         if ($playerData !== null) {
-            if ($this->plugin->getDataProvider()->mustChangePassword($player->getName())) {
+            if ($this->plugin->getDataProvider()->mustChangePassword($playerName)) {
                 $this->plugin->startForcePasswordChange($player);
                 return;
             }
@@ -85,20 +96,20 @@ class PlayerSessionListener implements Listener {
             $securityLevel = (int)($autoLoginConfig["security_level"] ?? 1);
 
             if ($autoLoginEnabled) {
-                $sessions = $this->plugin->getDataProvider()->getSessionsByPlayer($player->getName());
+                $sessions = $this->plugin->getDataProvider()->getSessionsByPlayer($playerName);
                 $ip = $player->getNetworkSession()->getIp();
-                $cid = $player->getNetworkSession()->getUniqueId();
 
-                foreach ($sessions as $sessionId => $sessionData) {
+                foreach ($sessions as $sessionData) {
                     if (($sessionData['expiration_time'] ?? 0) <= time()) {
                         continue;
                     }
 
                     $ipMatch = ($sessionData['ip_address'] ?? '') === $ip;
-                    $cidMatch = ($sessionData['client_id'] ?? null) === $cid;
+                    $deviceId = $this->plugin->deviceIds[strtolower($playerName)] ?? null;
+                    $deviceIdMatch = ($sessionData['device_id'] ?? null) === $deviceId;
 
                     $loginSuccess = false;
-                    if ($securityLevel === 1 && $ipMatch && $cidMatch) {
+                    if ($securityLevel === 1 && $ipMatch && $deviceIdMatch) {
                         $loginSuccess = true;
                     } elseif ($securityLevel === 0 && $ipMatch) {
                         $loginSuccess = true;
@@ -136,6 +147,8 @@ class PlayerSessionListener implements Listener {
     }
 
     public function onPlayerQuit(PlayerQuitEvent $event): void {
+        $lowerPlayerName = strtolower($event->getPlayer()->getName());
+        unset($this->plugin->deviceIds[$lowerPlayerName]); // Clean up in case of crash or unexpected quit
         (new PlayerDeauthenticateEvent($event->getPlayer(), true))->call();
     }
 }
