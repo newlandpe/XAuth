@@ -28,7 +28,10 @@ class PlayerAuthActionEvent extends PlayerEvent implements Cancellable
     public const ACTION_DROP_ITEM = 'drop_item';
     public const ACTION_PICKUP_ITEM = 'pickup_item';
     public const ACTION_INVENTORY_CHANGE = 'inventory_change';
-    public const ACTION_DAMAGE = 'damage';
+    public const ACTION_INVENTORY_TRANSACTION = 'inventory_transaction';
+    public const ACTION_CRAFT = 'craft';
+    public const ACTION_DAMAGE_RECEIVE = 'damage_receive';
+    public const ACTION_DAMAGE_DEAL = 'damage_deal';
 
     private string $actionType;
 

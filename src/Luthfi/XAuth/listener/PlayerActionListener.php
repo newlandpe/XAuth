@@ -9,9 +9,12 @@ use Luthfi\XAuth\Main;
 use pocketmine\event\block\BlockBreakEvent;
 use pocketmine\event\block\BlockPlaceEvent;
 use pocketmine\event\Cancellable;
+use pocketmine\event\entity\EntityDamageByEntityEvent;
 use pocketmine\event\entity\EntityDamageEvent;
 use pocketmine\event\entity\EntityItemPickupEvent;
+use pocketmine\event\inventory\CraftItemEvent;
 use pocketmine\event\inventory\InventoryOpenEvent;
+use pocketmine\event\inventory\InventoryTransactionEvent;
 use pocketmine\event\Listener;
 use pocketmine\event\player\PlayerChatEvent;
 use pocketmine\event\player\PlayerDropItemEvent;
@@ -46,7 +49,10 @@ class PlayerActionListener implements Listener {
             PlayerAuthActionEvent::ACTION_DROP_ITEM => 'allow_item_dropping',
             PlayerAuthActionEvent::ACTION_PICKUP_ITEM => 'allow_item_pickup',
             PlayerAuthActionEvent::ACTION_INVENTORY_CHANGE => 'allow_inventory_open',
-            PlayerAuthActionEvent::ACTION_DAMAGE => 'allow_damage',
+            PlayerAuthActionEvent::ACTION_INVENTORY_TRANSACTION => 'allow_inventory_transaction',
+            PlayerAuthActionEvent::ACTION_CRAFT => 'allow_crafting',
+            PlayerAuthActionEvent::ACTION_DAMAGE_RECEIVE => 'allow_damage_receive',
+            PlayerAuthActionEvent::ACTION_DAMAGE_DEAL => 'allow_damage_deal',
         ];
 
         $configKey = $configKeyMap[$actionType] ?? null;
@@ -144,9 +150,19 @@ class PlayerActionListener implements Listener {
     }
 
     public function onEntityDamage(EntityDamageEvent $event): void {
-        $entity = $event->getEntity();
-        if ($entity instanceof Player) {
-            $this->handleAction($entity, PlayerAuthActionEvent::ACTION_DAMAGE, $event);
+        $victim = $event->getEntity();
+        if ($victim instanceof Player) {
+            $this->handleAction($victim, PlayerAuthActionEvent::ACTION_DAMAGE_RECEIVE, $event);
+            if ($event->isCancelled()) {
+                return;
+            }
+        }
+
+        if ($event instanceof EntityDamageByEntityEvent) {
+            $damager = $event->getDamager();
+            if ($damager instanceof Player) {
+                $this->handleAction($damager, PlayerAuthActionEvent::ACTION_DAMAGE_DEAL, $event);
+            }
         }
     }
 
@@ -171,5 +187,17 @@ class PlayerActionListener implements Listener {
 
     public function onInventoryOpen(InventoryOpenEvent $event): void {
         $this->handleAction($event->getPlayer(), PlayerAuthActionEvent::ACTION_INVENTORY_CHANGE, $event);
+    }
+
+    public function onInventoryTransaction(InventoryTransactionEvent $event): void {
+        $player = $event->getTransaction()->getSource();
+        if ($player instanceof Player) {
+            $this->handleAction($player, PlayerAuthActionEvent::ACTION_INVENTORY_TRANSACTION, $event);
+        }
+    }
+
+    public function onCraftItem(CraftItemEvent $event): void {
+        $player = $event->getPlayer();
+        $this->handleAction($player, PlayerAuthActionEvent::ACTION_CRAFT, $event);
     }
 }

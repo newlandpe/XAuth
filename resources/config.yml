@@ -113,7 +113,9 @@ restrictions:
   # Allow player to move. If false, the player will be frozen.
   allow_movement: true
   # Allow player to receive damage.
-  allow_damage: false
+  allow_damage_receive: false
+  # Allow player to deal damage.
+  allow_damage_deal: false
   # Allow player to break blocks.
   allow_block_breaking: false
   # Allow player to place blocks.
@@ -128,6 +130,11 @@ restrictions:
   allow_item_pickup: false
   # Allow player to open inventories (chests, furnaces, etc.).
   allow_inventory_open: false
+  # Allow player to move items within an open inventory.
+  # This only has an effect if allow_inventory_open is true.
+  allow_inventory_transaction: false
+  # Allow player to craft items.
+  allow_crafting: false
   # A list of commands that unauthenticated players are allowed to use.
   # Commands must not start with a forward slash (/).
   # Use lowercase for all commands.
@@ -146,11 +153,11 @@ protection:
     # If true, the player will be teleported back to their original position after login.
     # If false, they will remain at the spawn location.
     return_to_original_position: true
-    spawn_world: "world"
-    spawn_coords:
-      x: 128
-      y: 70
-      z: 128
+    world: "world"
+    coords:
+      x: 128.5
+      y: 70.0
+      z: 128.5
 
   # Protects and hides the player's full state (inventory, armor, off-hand,
   # effects, health, xp) until they log in.
