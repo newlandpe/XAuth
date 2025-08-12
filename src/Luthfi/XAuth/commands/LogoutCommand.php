@@ -28,6 +28,12 @@ class LogoutCommand extends Command implements PluginOwned {
     }
 
     public function execute(CommandSender $sender, string $label, array $args): bool {
+        $commandSettings = (array)$this->plugin->getConfig()->get("command_settings");
+        if (isset($commandSettings['allow_logout_command']) && $commandSettings['allow_logout_command'] === false) {
+            $sender->sendMessage((string)($this->plugin->getCustomMessages()->get("messages.logout_disabled") ?? "§cThe /logout command is disabled on this server."));
+            return false;
+        }
+
         $messages = (array)$this->plugin->getCustomMessages()->get("messages");
 
         if (!$sender instanceof Player) {

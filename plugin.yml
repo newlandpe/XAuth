@@ -20,6 +20,9 @@ permissions:
   xauth.command.logout:
     description: "Allow player to logout from their account"
     default: true
+  xauth.command.unregister:
+    description: "Allow player to unregister their own account"
+    default: true
   xauth.command.admin:
     description: "Allows usage of the /xauth command"
     default: op

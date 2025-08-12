@@ -40,6 +40,7 @@ Here are the commands available in XAuth:
 - `/login <password>`: Logs into your registered account.
 - `/resetpassword <old_password> <new_password>`: Resets your account password.
 - `/logout`: Logs out from your account.
+- `/unregister`: Unregisters your own account.
 - `/xauth <subcommand>`: Administrative commands for XAuth.
   - `/xauth help`: Show this help guide.
   - `/xauth lock <player_name>`: Locks a player's account, preventing them from logging in.
@@ -67,6 +68,7 @@ Here are the commands available in XAuth:
 | `xauth.command.login` | Allow player to login to their account | `true` |
 | `xauth.command.resetpassword` | Allow player to reset their password | `true` |
 | `xauth.command.logout` | Allow player to logout from their account | `true` |
+| `xauth.command.unregister` | Allow player to unregister their own account | `true` |
 | `xauth.command.admin` | Allows usage of the /xauth command | `op` |
 
 ## API for Developers

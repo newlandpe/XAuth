@@ -94,6 +94,10 @@ command_settings:
   # If enabled, the /xauth forcepasswordchange command will immediately affect an online player.
   # If disabled, it will only take effect on their next login.
   force_change_immediate: true
+  # Allow players to use the /logout command.
+  allow_logout_command: true
+  # Allow players to unregister their own account using /unregister.
+  allow_player_self_unregister: true
 
 session:
   # The time in seconds a player has to log in before being kicked. Set to 0 to disable.

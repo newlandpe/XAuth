@@ -8,6 +8,7 @@ use Luthfi\XAuth\commands\LoginCommand;
 use Luthfi\XAuth\commands\LogoutCommand;
 use Luthfi\XAuth\commands\RegisterCommand;
 use Luthfi\XAuth\commands\ResetPasswordCommand;
+use Luthfi\XAuth\commands\UnregisterCommand;
 use Luthfi\XAuth\commands\XAuthCommand;
 use Luthfi\XAuth\database\DataProviderFactory;
 use Luthfi\XAuth\database\DataProviderInterface;
@@ -94,6 +95,7 @@ class Main extends PluginBase implements Listener {
         $this->getServer()->getCommandMap()->register("login", new LoginCommand($this));
         $this->getServer()->getCommandMap()->register("resetpassword", new ResetPasswordCommand($this));
         $this->getServer()->getCommandMap()->register("logout", new LogoutCommand($this));
+        $this->getServer()->getCommandMap()->register("unregister", new UnregisterCommand($this));
         $this->getServer()->getCommandMap()->register("xauth", new XAuthCommand($this));
 
         $autoLoginEnabled = (bool)($this->configData->getNested("auto-login.enabled") ?? false);
