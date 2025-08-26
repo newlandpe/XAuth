@@ -12,10 +12,8 @@ use SQLite3;
 class SqliteProvider implements DataProviderInterface {
 
     private SQLite3 $db;
-    private Main $plugin;
 
     public function __construct(Main $plugin) {
-        $this->plugin = $plugin;
         $this->db = new SQLite3($plugin->getDataFolder() . "players.db");
         $this->db->enableExceptions(true);
         $this->db->exec("PRAGMA foreign_keys = ON");

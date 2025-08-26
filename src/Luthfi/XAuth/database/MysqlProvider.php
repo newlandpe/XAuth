@@ -12,10 +12,8 @@ use pocketmine\player\Player;
 class MysqlProvider implements DataProviderInterface {
 
     private PDO $db;
-    private Main $plugin;
 
     public function __construct(Main $plugin) {
-        $this->plugin = $plugin;
         $config = $plugin->getConfig()->get('database');
         if (!is_array($config)) {
             $config = [];

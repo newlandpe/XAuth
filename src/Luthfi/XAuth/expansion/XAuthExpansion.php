@@ -10,7 +10,7 @@ use pocketmine\player\Player;
 
 class XAuthExpansion extends PlaceholderExpansion {
 
-    private Main $plugin;
+    protected $plugin;
 
     public function __construct(Main $plugin) {
         $this->plugin = $plugin;

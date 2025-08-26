@@ -252,7 +252,7 @@ class AuthenticationFlowManager {
         return $this->orderedAuthenticationSteps;
     }
 
-    private function getContextForPlayer(Player $player): ?AuthenticationContext {
+    public function getContextForPlayer(Player $player): ?AuthenticationContext {
         return $this->playerContexts[strtolower($player->getName())] ?? null;
     }
 }

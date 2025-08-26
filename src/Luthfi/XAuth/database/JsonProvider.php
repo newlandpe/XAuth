@@ -13,10 +13,8 @@ class JsonProvider implements DataProviderInterface {
 
     private Config $playerData;
     private Config $sessionData;
-    private Main $plugin;
 
     public function __construct(Main $plugin) {
-        $this->plugin = $plugin;
         $this->playerData = new Config($plugin->getDataFolder() . "players.json", Config::JSON);
         $this->sessionData = new Config($plugin->getDataFolder() . "sessions.json", Config::JSON);
     }
