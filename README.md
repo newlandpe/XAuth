@@ -1,5 +1,16 @@
 # XAuth
 
+> [!CAUTION]
+> **Experimental Software Notice**
+> 
+> This software is in a state of experimental development. Even consecutive versions may have significant breaking changes, and **backward compatibility is not guaranteed**.
+> 
+> -   **Not recommended for production servers.** The author of this fork, and especially the author of the original software, **are not responsible** for any damages caused by unpredictable program behavior.
+> -   This software is **not** offered as a stable, evolutionary solution or a finished product.
+> -   This software **does not** require or advise you to disable `verify-xuid` or `online-mode` on your server.
+> 
+> If you have the time and expertise, your contributions to improving the plugin through bug fixes or discussions are welcome. However, use it at your own risk.
+
 [![Poggit CI](https://poggit.pmmp.io/ci.shield/newlandpe/XAuth/XAuth)](https://poggit.pmmp.io/ci/newlandpe/XAuth/XAuth)
 
 A simple, secure, and extensible authentication plugin for PocketMine-MP, modernized for 2FA integration. This plugin is a fork of LuthMC's XAuth, aiming to provide enhanced security features and maintainability.
