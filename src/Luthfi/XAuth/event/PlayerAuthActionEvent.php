@@ -14,8 +14,7 @@ use pocketmine\player\Player;
  * such as moving, sending a command, or breaking a block. This event can be cancelled
  * to allow the action.
  */
-class PlayerAuthActionEvent extends PlayerEvent implements Cancellable 
-{
+class PlayerAuthActionEvent extends PlayerEvent implements Cancellable {
     use CancellableTrait;
 
     public const ACTION_MOVE = 'move';

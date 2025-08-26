@@ -53,7 +53,7 @@ messages:
   force_change_password_form_title: "Примусова зміна пароля"
   force_change_password_closed: "§cВи повинні змінити свій пароль, щоб продовжити."
   resetpassword_command_description: "Скинути свій пароль"
-  resetpassword_command_usage: "§cВикористання: /resetpassword <старий_пароль> <новий_пароль>"
+  resetpassword_command_usage: "§cВикористання: /resetpassword <старий_пароль> <новий_пароль> <підтвердіть_новий_пароль>"
   account_locked_by_admin: "§cВаш обліковий запис заблоковано адміністратором."
   account_unregistered_by_admin: "§eВаш обліковий запис було видалено адміністратором. Будь ласка, зареєструйтеся знову."
   session_ended_by_admin: "§eВашу сесію було завершено адміністратором. Будь ласка, увійдіть знову."
@@ -77,7 +77,7 @@ messages:
   xauth_unregister_usage: "§cВикористання: /xauth unregister <гравець>"
   xauth_reload_success: "§aКонфігурація XAuth перезавантажена."
   xauth_lookup_usage: "§cВикористання: /xauth lookup <гравець>"
-  xauth_player_lookup_info: |2
+  xauth_player_lookup_info: |
     §e--- Інформація про гравця: {player_name} ---
     §fЗареєстровано: §7{registered_at}
     §fIP реєстрації: §7{registration_ip}
@@ -124,6 +124,9 @@ messages:
   xauth_sessions_terminateall_success: "§aУсі сесії для {player_name} завершено."
   xauth_sessions_cleanup_success: "§aТермін дії сесій очищено."
   xauth_sessions_unknown_subcommand: "§cНевідома підкоманда сесій. Використовуйте /xauth sessions <list|terminate|terminateall|cleanup>"
+  waterdog_kick_message: "§cВи не автентифіковані через WaterdogPE!\n§cБудь ласка, підключіться через проксі WaterdogPE."
+  waterdog_online_mode_kick: "§cЦей сервер працює в онлайн-режимі і не може приймати з'єднання через проксі."
+  waterdog_verify_xuid_kick: "§cПідключення через проксі неможливе, оскільки на сервері увімкнена перевірка XUID."
 
 forms:
   login:
@@ -140,6 +143,14 @@ forms:
     confirm_password_placeholder: "Введіть ваш пароль ще раз"
     rules_toggle_label: "Я прочитав(ла) та погоджуюся з правилами сервера."
     rules_error_message: "§cВи повинні погодитися з правилами, щоб зареєструватися."
+    rules_text: |
+      Ласкаво просимо на наш сервер!
+      Будь ласка, прочитайте та погодьтеся з наступними правилами:
+      1. Будьте поважними до інших гравців.
+      2. Не гріфіть і не крадіть.
+      3. Не чітерте і не використовуйте експлойти.
+      4. Дотримуйтесь інструкцій персоналу.
+      Реєструючись, ви погоджуєтеся з цими правилами.
   changepassword:
     title: "Зміна пароля"
     content: ""
@@ -147,16 +158,27 @@ forms:
     new_password_label: "Новий пароль"
     confirm_new_password_label: "Підтвердіть новий пароль"
 
+scorehud_tags:
+  is_authenticated:
+    true: "Так"
+    false: "Ні"
+  is_registered:
+    true: "Так"
+    false: "Ні"
+  is_locked:
+    true: "Так"
+    false: "Ні"
+
 placeholders:
   is_authenticated:
-    yes: "Так"
-    no: "Ні"
+    true: "Так"
+    false: "Ні"
   is_registered:
-    yes: "Так"
-    no: "Ні"
+    true: "Так"
+    false: "Ні"
   is_locked:
-    yes: "Так"
-    no: "Ні"
+    true: "Так"
+    false: "Ні"
 
 titles:
   register_prompt:

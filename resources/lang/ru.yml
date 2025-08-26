@@ -53,7 +53,7 @@ messages:
   force_change_password_form_title: "Принудительная смена пароля"
   force_change_password_closed: "§cВы должны сменить свой пароль, чтобы продолжить."
   resetpassword_command_description: "Сбросить свой пароль"
-  resetpassword_command_usage: "§cИспользование: /resetpassword <старый_пароль> <новый_пароль>"
+  resetpassword_command_usage: "§cИспользование: /resetpassword <старый_пароль> <новый_пароль> <подтвердите_новый_пароль>"
   account_locked_by_admin: "§cВаш аккаунт был заблокирован администратором."
   account_unregistered_by_admin: "§eВаш аккаунт был удалён администратором. Пожалуйста, зарегистрируйтесь снова."
   session_ended_by_admin: "§eВаша сессия была завершена администратором. Пожалуйста, войдите снова."
@@ -124,6 +124,9 @@ messages:
   xauth_sessions_terminateall_success: "§aВсе сессии для {player_name} завершены."
   xauth_sessions_cleanup_success: "§aИстекшие сессии очищены."
   xauth_sessions_unknown_subcommand: "§cНеизвестная подкоманда сессий. Используйте /xauth sessions <list|terminate|terminateall|cleanup>"
+  waterdog_kick_message: "§cВы не аутентифицированы через WaterdogPE!\n§cПожалуйста, подключитесь через прокси WaterdogPE."
+  waterdog_online_mode_kick: "§cЭтот сервер находится в онлайн-режиме и не может принимать подключения через прокси."
+  waterdog_verify_xuid_kick: "§cПодключение через прокси невозможно, так как на сервере включена проверка XUID."
 
 forms:
   login:
@@ -140,6 +143,14 @@ forms:
     confirm_password_placeholder: "Введите ваш пароль ещё раз"
     rules_toggle_label: "Я прочитал(а) и согласен(на) с правилами сервера."
     rules_error_message: "§cВы должны согласиться с правилами для регистрации."
+    rules_text: |
+      Добро пожаловать на наш сервер!
+      Пожалуйста, прочитайте и согласитесь со следующими правилами:
+      1. Уважайте других игроков.
+      2. Не гриферьте и не воруйте.
+      3. Не читерите и не используйте баги.
+      4. Следуйте инструкциям персонала.
+      Регистрируясь, вы соглашаетесь с этими правилами.
   changepassword:
     title: "Смена пароля"
     content: ""
@@ -147,16 +158,27 @@ forms:
     new_password_label: "Новый пароль"
     confirm_new_password_label: "Подтвердите новый пароль"
 
+scorehud_tags:
+  is_authenticated:
+    true: "Да"
+    false: "Нет"
+  is_registered:
+    true: "Да"
+    false: "Нет"
+  is_locked:
+    true: "Да"
+    false: "Нет"
+
 placeholders:
   is_authenticated:
-    yes: "Да"
-    no: "Нет"
+    true: "Да"
+    false: "Нет"
   is_registered:
-    yes: "Да"
-    no: "Нет"
+    true: "Да"
+    false: "Нет"
   is_locked:
-    yes: "Да"
-    no: "Нет"
+    true: "Да"
+    false: "Нет"
 
 titles:
   register_prompt:

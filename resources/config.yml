@@ -6,6 +6,17 @@ language: en
 # Enable titles on join
 enable_titles: true
 
+# Defines the order of authentication steps.
+# Only steps registered by plugins (e.g., "captcha_login", "binding_manager_2fa") will be executed.
+# If a step listed here is not registered by any plugin, it will be skipped.
+# Built-in steps include "auto_login", "xauth_login", and "xauth_register".
+authentication-flow-order:
+  - "captcha_login"
+  - "auto_login"
+  - "xauth_login"
+  - "xauth_register"
+  - "binding_manager_2fa"
+
 # Auto-login settings
 auto-login:
   enabled: true
@@ -79,6 +90,12 @@ database:
     user: root
     password: ""
     database: xauth
+
+# Enable or disable data migration.
+# If true, XAuth will attempt to migrate data from older formats (e.g., players.yml)
+# to the currently configured database provider on startup.
+# It's recommended to disable this after the initial migration is complete.
+enable_migration: false
 
 # Brute-force protection settings
 bruteforce_protection:
@@ -202,5 +219,14 @@ geoip:
       # Example: "ip-api.com": "208.95.112.1"
     custom-ca-bundle: ""
 
+# WaterdogPE Fix settings
+waterdog-fix:
+  enabled: false
+  # If true, players not authenticated to WaterdogPE (i.e., missing Waterdog_XUID/IP in JWT) will be kicked.
+  force-players-to-waterdog: false
+  # The IP address WaterdogPE is bound to on the PocketMine-MP server.
+  # This is used to verify the connection is coming from WaterdogPE.
+  waterdog-bind-address: "127.0.0.1"
+
 # Do not change this
-config-version: 1.2
+config-version: 1.3

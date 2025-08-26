@@ -185,27 +185,13 @@ class MysqlProvider implements DataProviderInterface {
     }
 
     public function createSession(string $playerName, string $ipAddress, string $deviceId, int $lifetimeSeconds): string {
-        $playerNameLower = strtolower($playerName);
-        $sessions = $this->getSessionsByPlayer($playerNameLower);
-        $maxSessions = (int)($this->plugin->getConfig()->getNested('auto-login.max_sessions_per_player') ?? 5);
-
-        if (count($sessions) >= $maxSessions) {
-            uasort($sessions, function($a, $b) {
-                return ($a['last_activity'] ?? 0) <=> ($b['last_activity'] ?? 0);
-            });
-            $sessionsToDelete = array_slice($sessions, 0, count($sessions) - $maxSessions + 1, true);
-            foreach (array_keys($sessionsToDelete) as $sessionId) {
-                $this->deleteSession($sessionId);
-            }
-        }
-
         $sessionId = bin2hex(random_bytes(16));
         $loginTime = time();
         $expirationTime = $loginTime + $lifetimeSeconds;
 
         $stmt = $this->db->prepare("INSERT INTO sessions (session_id, player_name, ip_address, device_id, login_time, last_activity, expiration_time) VALUES (:session_id, :player_name, :ip_address, :device_id, :login_time, :last_activity, :expiration_time)");
         $stmt->bindValue(":session_id", $sessionId);
-        $stmt->bindValue(":player_name", $playerNameLower);
+        $stmt->bindValue(":player_name", strtolower($playerName));
         $stmt->bindValue(":ip_address", $ipAddress);
         $stmt->bindValue(":device_id", $deviceId);
         $stmt->bindValue(":login_time", $loginTime, PDO::PARAM_INT);

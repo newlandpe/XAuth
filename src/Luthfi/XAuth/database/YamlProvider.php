@@ -133,26 +133,12 @@ class YamlProvider implements DataProviderInterface {
     }
 
     public function createSession(string $playerName, string $ipAddress, string $deviceId, int $lifetimeSeconds): string {
-        $playerNameLower = strtolower($playerName);
-        $sessions = $this->getSessionsByPlayer($playerNameLower);
-        $maxSessions = (int)($this->plugin->getConfig()->getNested('auto-login.max_sessions_per_player') ?? 5);
-
-        if (count($sessions) >= $maxSessions) {
-            uasort($sessions, function($a, $b) {
-                return ($a['last_activity'] ?? 0) <=> ($b['last_activity'] ?? 0);
-            });
-            $sessionsToDelete = array_slice($sessions, 0, count($sessions) - $maxSessions + 1, true);
-            foreach (array_keys($sessionsToDelete) as $sessionId) {
-                $this->deleteSession($sessionId);
-            }
-        }
-
         $sessionId = bin2hex(random_bytes(16));
         $loginTime = time();
         $expirationTime = $loginTime + $lifetimeSeconds;
 
         $this->sessionData->set($sessionId, [
-            "player_name" => $playerNameLower,
+            "player_name" => strtolower($playerName),
             "ip_address" => $ipAddress,
             "device_id" => $deviceId,
             "login_time" => $loginTime,

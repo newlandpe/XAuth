@@ -8,7 +8,8 @@ use pocketmine\event\player\PlayerEvent;
 use pocketmine\player\Player;
 
 /**
- * Called when a player successfully authenticates by logging in.
+ * Called after a player has been fully authenticated and their state is restored.
+ * This event is for notification purposes and cannot be cancelled.
  */
 class PlayerAuthenticateEvent extends PlayerEvent {
 

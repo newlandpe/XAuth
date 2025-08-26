@@ -175,27 +175,13 @@ class SqliteProvider implements DataProviderInterface {
     }
 
     public function createSession(string $playerName, string $ipAddress, string $deviceId, int $lifetimeSeconds): string {
-        $playerNameLower = strtolower($playerName);
-        $sessions = $this->getSessionsByPlayer($playerNameLower);
-        $maxSessions = (int)($this->plugin->getConfig()->getNested('auto-login.max_sessions_per_player') ?? 5);
-
-        if (count($sessions) >= $maxSessions) {
-            uasort($sessions, function($a, $b) {
-                return ($a['last_activity'] ?? 0) <=> ($b['last_activity'] ?? 0);
-            });
-            $sessionsToDelete = array_slice($sessions, 0, count($sessions) - $maxSessions + 1, true);
-            foreach (array_keys($sessionsToDelete) as $sessionId) {
-                $this->deleteSession($sessionId);
-            }
-        }
-
         $sessionId = bin2hex(random_bytes(16)); // Generate a random 32-char hex string
         $loginTime = time();
         $expirationTime = $loginTime + $lifetimeSeconds;
 
         $stmt = $this->db->prepare("INSERT INTO sessions (session_id, player_name, ip_address, device_id, login_time, last_activity, expiration_time) VALUES (:session_id, :player_name, :ip_address, :device_id, :login_time, :last_activity, :expiration_time)");
         $stmt->bindValue(":session_id", $sessionId, SQLITE3_TEXT);
-        $stmt->bindValue(":player_name", $playerNameLower, SQLITE3_TEXT);
+        $stmt->bindValue(":player_name", strtolower($playerName), SQLITE3_TEXT);
         $stmt->bindValue(":ip_address", $ipAddress, SQLITE3_TEXT);
         $stmt->bindValue(":device_id", $deviceId, SQLITE3_TEXT);
         $stmt->bindValue(":login_time", $loginTime, SQLITE3_INTEGER);

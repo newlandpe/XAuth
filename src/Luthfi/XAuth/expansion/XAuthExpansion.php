@@ -34,7 +34,7 @@ class XAuthExpansion extends PlaceholderExpansion {
                 case "authenticated_players":
                     $count = 0;
                     foreach ($this->plugin->getServer()->getOnlinePlayers() as $onlinePlayer) {
-                        if ($this->plugin->getAuthManager()->isPlayerAuthenticated($onlinePlayer)) {
+                        if ($this->plugin->getAuthenticationService()->isPlayerAuthenticated($onlinePlayer)) {
                             $count++;
                         }
                     }
@@ -42,7 +42,7 @@ class XAuthExpansion extends PlaceholderExpansion {
                 case "unauthenticated_players":
                     $count = 0;
                     foreach ($this->plugin->getServer()->getOnlinePlayers() as $onlinePlayer) {
-                        if (!$this->plugin->getAuthManager()->isPlayerAuthenticated($onlinePlayer)) {
+                        if (!$this->plugin->getAuthenticationService()->isPlayerAuthenticated($onlinePlayer)) {
                             $count++;
                         }
                     }
@@ -53,7 +53,7 @@ class XAuthExpansion extends PlaceholderExpansion {
 
         switch ($placeholder) {
             case "is_authenticated":
-                return $this->getTranslatedText($placeholder, $this->plugin->getAuthManager()->isPlayerAuthenticated($player));
+                return $this->getTranslatedText($placeholder, $this->plugin->getAuthenticationService()->isPlayerAuthenticated($player));
             case "is_registered":
                 return $this->getTranslatedText($placeholder, $this->plugin->getDataProvider()->isPlayerRegistered($player->getName()));
             case "is_locked":
@@ -64,7 +64,7 @@ class XAuthExpansion extends PlaceholderExpansion {
     }
 
     private function getTranslatedText(string $placeholder, bool $value): string {
-        $key = "placeholders." . $placeholder . "." . ($value ? "yes" : "no");
+        $key = "placeholders." . $placeholder . "." . ($value ? "true" : "false");
         $defaultValue = $value ? "Yes" : "No";
         return (string)($this->plugin->getCustomMessages()->getNested($key) ?? $defaultValue);
     }

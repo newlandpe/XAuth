@@ -53,7 +53,7 @@ messages:
   force_change_password_form_title: "Forced Password Change"
   force_change_password_closed: "§cYou must change your password to continue."
   resetpassword_command_description: "Reset your password"
-  resetpassword_command_usage: "§cUsage: /resetpassword <old_password> <new_password>"
+  resetpassword_command_usage: "§cUsage: /resetpassword <old_password> <new_password> <confirm_password>"
   account_locked_by_admin: "§cYour account has been locked by an administrator."
   account_unregistered_by_admin: "§eYour account has been unregistered by an administrator. Please register again."
   session_ended_by_admin: "§eYour session has been ended by an administrator. Please log in again."
@@ -124,6 +124,9 @@ messages:
   xauth_sessions_terminateall_success: "§aAll sessions for {player_name} terminated."
   xauth_sessions_cleanup_success: "§aExpired sessions cleaned up."
   xauth_sessions_unknown_subcommand: "§cUnknown sessions subcommand. Use /xauth sessions <list|terminate|terminateall|cleanup>"
+  waterdog_kick_message: "§cYou are not authenticated via WaterdogPE!\n§cPlease connect through the WaterdogPE proxy."
+  waterdog_online_mode_kick: "§cThis server is in online-mode and cannot accept logins from a proxy."
+  waterdog_verify_xuid_kick: "§cThis server has XUID verification enabled and cannot accept logins from a proxy."
 
 forms:
   login:
@@ -140,6 +143,14 @@ forms:
     confirm_password_placeholder: "Enter your password again"
     rules_toggle_label: "I have read and agree to the server rules."
     rules_error_message: "§cYou must agree to the rules to register."
+    rules_text: |
+      Welcome to our server!
+      Please read and agree to the following rules:
+      1. Be respectful to other players.
+      2. No griefing or stealing.
+      3. No cheating or exploiting.
+      4. Follow staff instructions.
+      By registering, you agree to these rules.
   changepassword:
     title: "Change Password"
     content: ""
@@ -147,16 +158,27 @@ forms:
     new_password_label: "New Password"
     confirm_new_password_label: "Confirm New Password"
 
+scorehud_tags:
+  is_authenticated:
+    true: "Yes"
+    false: "No"
+  is_registered:
+    true: "Yes"
+    false: "No"
+  is_locked:
+    true: "Yes"
+    false: "No"
+
 placeholders:
   is_authenticated:
-    yes: "Yes"
-    no: "No"
+    true: "Yes"
+    false: "No"
   is_registered:
-    yes: "Yes"
-    no: "No"
+    true: "Yes"
+    false: "No"
   is_locked:
-    yes: "Yes"
-    no: "No"
+    true: "Yes"
+    false: "No"
 
 titles:
   register_prompt:

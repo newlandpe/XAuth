@@ -4,10 +4,15 @@ declare(strict_types=1);
 
 namespace Luthfi\XAuth\commands;
 
-use Luthfi\XAuth\event\PlayerRegisterEvent;
+use Luthfi\XAuth\exception\AccountLockedException;
+use Luthfi\XAuth\exception\AlreadyLoggedInException;
+use Luthfi\XAuth\exception\AlreadyRegisteredException;
+use Luthfi\XAuth\exception\PasswordMismatchException;
+use Luthfi\XAuth\exception\RegistrationRateLimitException;
 use Luthfi\XAuth\Main;
 use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
+use pocketmine\command\utils\InvalidCommandSyntaxException;
 use pocketmine\player\Player;
 use pocketmine\plugin\Plugin;
 use pocketmine\plugin\PluginOwned;
@@ -35,55 +40,34 @@ class RegisterCommand extends Command implements PluginOwned {
             return false;
         }
 
-        if ($this->plugin->getAuthManager()->isPlayerAuthenticated($sender)) {
-            $sender->sendMessage((string)($messages["already_logged_in"] ?? "§cYou are already logged in."));
-            return false;
-        }
-
-        $name = strtolower($sender->getName());
         if (count($args) !== 2) {
-            $sender->sendMessage((string)($messages["register_usage"] ?? "§cUsage: /register <password> <confirm_password>"));
-            return false;
-        }
-
-        $playerData = $this->plugin->getDataProvider()->getPlayer($sender);
-
-        if ($playerData !== null) {
-            $sender->sendMessage((string)($messages["already_registered"] ?? "§cYou are already registered. Please use /login <password> to log in."));
+            $sender->sendMessage($this->getUsage());
             return false;
         }
 
         $password = (string)($args[0] ?? '');
         $confirmPassword = (string)($args[1] ?? '');
 
-        if (($message = $this->plugin->getPasswordValidator()->validatePassword($password)) !== null) {
-            $sender->sendMessage($message);
-            return false;
-        }
-
-        if ($password !== $confirmPassword) {
+        try {
+            $registrationService = $this->plugin->getRegistrationService();
+            $registrationService->handleRegistrationRequest($sender, $password, $confirmPassword);
+        } catch (AlreadyLoggedInException $e) {
+            $sender->sendMessage((string)($messages["already_logged_in"] ?? "§cYou are already logged in."));
+        } catch (AlreadyRegisteredException $e) {
+            $sender->sendMessage((string)($messages["already_registered"] ?? "§cYou are already registered. Please use /login <password> to log in."));
+        } catch (AccountLockedException $e) {
+            $sender->sendMessage((string)($messages["account_locked_by_admin"] ?? "§cYour account has been locked by an administrator."));
+        } catch (RegistrationRateLimitException $e) {
+            $sender->sendMessage((string)($messages["registration_ip_limit_reached"] ?? "§cYou have reached the maximum number of registrations for your IP address."));
+        } catch (PasswordMismatchException $e) {
             $sender->sendMessage((string)($messages["password_mismatch"] ?? "§cPasswords do not match."));
-            return false;
-        }
-
-        $passwordHasher = $this->plugin->getPasswordHasher();
-        if ($passwordHasher === null) {
+        } catch (InvalidCommandSyntaxException $e) {
+            // This exception is used to pass validation messages from PasswordValidator
+            $sender->sendMessage($e->getMessage());
+        } catch (\Exception $e) {
             $sender->sendMessage((string)($messages["unexpected_error"] ?? "§cAn unexpected error occurred. Please try again."));
-            $this->plugin->getLogger()->error("PasswordHasher is not initialized.");
-            return false;
+            $this->plugin->getLogger()->error("An unexpected error occurred during command registration: " . $e->getMessage());
         }
-
-        $hashedPassword = $passwordHasher->hashPassword($password);
-
-        $this->plugin->getDataProvider()->registerPlayer($sender, $hashedPassword);
-
-        (new PlayerRegisterEvent($sender))->call();
-
-        $this->plugin->getAuthManager()->authenticatePlayer($sender);
-
-        $this->plugin->restorePlayerState($sender);
-
-        $sender->sendMessage((string)($messages["register_success"] ?? "§aYou have successfully registered!"));
         return true;
     }
 

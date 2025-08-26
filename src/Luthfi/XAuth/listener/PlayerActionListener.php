@@ -33,7 +33,7 @@ class PlayerActionListener implements Listener {
     }
 
     private function handleAction(Player $player, string $actionType, Cancellable $event): void {
-        if ($this->plugin->getAuthManager()->isPlayerAuthenticated($player)) {
+        if ($this->plugin->getAuthenticationService()->isPlayerAuthenticated($player)) {
             return;
         }
 
@@ -64,7 +64,7 @@ class PlayerActionListener implements Listener {
 
         $allowAction = (bool)($restrictions[$configKey] ?? true); // Default to true if not set in config
 
-        if ($this->plugin->isForcingPasswordChange($player)) {
+        if ($this->plugin->getAuthenticationService()->isForcingPasswordChange($player)) {
             if (!$allowAction) {
                 $event->cancel();
                 return;
@@ -107,7 +107,7 @@ class PlayerActionListener implements Listener {
             return;
         }
 
-        if ($this->plugin->isForcingPasswordChange($player)) {
+        if ($this->plugin->getAuthenticationService()->isForcingPasswordChange($player)) {
             $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["force_change_password_prompt"] ?? "");
             if (!empty($message)) {
                 $player->sendMessage($message);
@@ -116,7 +116,7 @@ class PlayerActionListener implements Listener {
             return;
         }
 
-        if ($this->plugin->getAuthManager()->isPlayerAuthenticated($player)) {
+        if ($this->plugin->getAuthenticationService()->isPlayerAuthenticated($player)) {
             return;
         }
 

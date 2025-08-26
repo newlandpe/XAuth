@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Luthfi\XAuth\commands;
 
-use Luthfi\XAuth\event\PlayerDeauthenticateEvent;
 use Luthfi\XAuth\Main;
 use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
@@ -41,13 +40,12 @@ class LogoutCommand extends Command implements PluginOwned {
             return false;
         }
 
-        if (!$this->plugin->getAuthManager()->isPlayerAuthenticated($sender)) {
+        if (!$this->plugin->getAuthenticationService()->isPlayerAuthenticated($sender)) {
             $sender->sendMessage((string)($messages["not_logged_in"] ?? "§cYou are not logged in."));
             return false;
         }
 
-        $event = new PlayerDeauthenticateEvent($sender);
-        $event->call();
+        $this->plugin->getAuthenticationService()->handleLogout($sender);
 
         $sender->sendMessage((string)($messages["logout_success"] ?? "§aYou have been logged out."));
         return true;

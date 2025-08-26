@@ -5,7 +5,7 @@ api: 5.0.0
 author: Luthfi
 description: A simple auth plugin for PocketMine-MP
 website: https://github.com/LuthMC/XAuth
-softdepend: ["PlaceholderAPI"]
+softdepend: ["PlaceholderAPI", "ScoreHud"]
 
 permissions:
   xauth.command.register:

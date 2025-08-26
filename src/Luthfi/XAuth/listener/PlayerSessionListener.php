@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace Luthfi\XAuth\listener;
 
-use Luthfi\XAuth\event\PlayerDeauthenticateEvent;
 use Luthfi\XAuth\Main;
 use pocketmine\event\Listener;
 use pocketmine\event\player\PlayerJoinEvent;
 use pocketmine\event\player\PlayerPreLoginEvent;
 use pocketmine\event\player\PlayerQuitEvent;
+use pocketmine\event\server\DataPacketSendEvent;
+use pocketmine\network\mcpe\protocol\PlayerListPacket;
 
 class PlayerSessionListener implements Listener {
 
@@ -73,58 +74,32 @@ class PlayerSessionListener implements Listener {
         }
     }
 
+    /**
+     * @param PlayerJoinEvent $event
+     * @priority HIGHEST
+     */
     public function onJoin(PlayerJoinEvent $event): void {
         $player = $event->getPlayer();
-        $authManager = $this->plugin->getAuthManager();
-        $playerName = $player->getName();
+        $authenticationService = $this->plugin->getAuthenticationService();
 
-        if ($authManager->isPlayerAuthenticated($player)) {
+        if ($authenticationService->isPlayerAuthenticated($player)) {
             return;
         }
 
-        $this->plugin->protectPlayer($player);
+        // If authentication steps are registered, take over the flow
+        if (!empty($this->plugin->getAuthenticationSteps()) && !empty($this->plugin->getOrderedAuthenticationSteps())) {
+            $this->plugin->startAuthenticationStep($player); // Start the managed authentication flow
+            return;
+        }
 
+        // Fallback to old behavior if no flow is defined in config
+        $this->plugin->getPlayerStateService()->protectPlayer($player);
         $playerData = $this->plugin->getDataProvider()->getPlayer($player);
+        $formsEnabled = (bool)($this->plugin->getConfig()->getNested("forms.enabled") ?? true);
+
         if ($playerData !== null) {
-            if ($this->plugin->getDataProvider()->mustChangePassword($playerName)) {
-                $this->plugin->startForcePasswordChange($player);
-                return;
-            }
-
-            $autoLoginConfig = (array)$this->plugin->getConfig()->get("auto-login", []);
-            $autoLoginEnabled = (bool)($autoLoginConfig["enabled"] ?? false);
-            $securityLevel = (int)($autoLoginConfig["security_level"] ?? 1);
-
-            if ($autoLoginEnabled) {
-                $sessions = $this->plugin->getDataProvider()->getSessionsByPlayer($playerName);
-                $ip = $player->getNetworkSession()->getIp();
-
-                foreach ($sessions as $sessionData) {
-                    if (($sessionData['expiration_time'] ?? 0) <= time()) {
-                        continue;
-                    }
-
-                    $ipMatch = ($sessionData['ip_address'] ?? '') === $ip;
-                    $deviceId = $this->plugin->deviceIds[strtolower($playerName)] ?? null;
-                    $deviceIdMatch = ($sessionData['device_id'] ?? null) === $deviceId;
-
-                    $loginSuccess = false;
-                    if ($securityLevel === 1 && $ipMatch && $deviceIdMatch) {
-                        $loginSuccess = true;
-                    } elseif ($securityLevel === 0 && $ipMatch) {
-                        $loginSuccess = true;
-                    }
-
-                    if ($loginSuccess) {
-                        $this->plugin->forceLogin($player);
-                        return;
-                    }
-                }
-            }
-
-            // Normal login flow if no auto-login occurred
+            // Normal login flow
             $this->plugin->scheduleKickTask($player);
-            $formsEnabled = (bool)($this->plugin->getConfig()->getNested("forms.enabled") ?? true);
             $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["login_prompt"] ?? "");
             $player->sendMessage($message);
             if ($formsEnabled) {
@@ -135,7 +110,6 @@ class PlayerSessionListener implements Listener {
         } else {
             // Registration flow
             $this->plugin->scheduleKickTask($player);
-            $formsEnabled = (bool)($this->plugin->getConfig()->getNested("forms.enabled") ?? true);
             $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["register_prompt"] ?? "");
             $player->sendMessage($message);
             if ($formsEnabled) {
@@ -149,6 +123,59 @@ class PlayerSessionListener implements Listener {
     public function onPlayerQuit(PlayerQuitEvent $event): void {
         $lowerPlayerName = strtolower($event->getPlayer()->getName());
         unset($this->plugin->deviceIds[$lowerPlayerName]); // Clean up in case of crash or unexpected quit
-        (new PlayerDeauthenticateEvent($event->getPlayer(), true))->call();
+        $this->plugin->getAuthenticationService()->handleQuit($event->getPlayer());
+    }
+
+    public function onPacketSend(DataPacketSendEvent $event): void {
+        $playerListConfig = (array)$this->plugin->getConfig()->get('player_list_visibility', []);
+        if ((bool)($playerListConfig['hide'] ?? true) === false) {
+            return;
+        }
+
+        $packets = $event->getPackets();
+        $modifiedPackets = [];
+        $hasChanges = false;
+
+        foreach ($packets as $packet) {
+            if (!$packet instanceof PlayerListPacket) {
+                $modifiedPackets[] = $packet;
+                continue;
+            }
+
+            if ($packet->type !== PlayerListPacket::TYPE_ADD) {
+                $modifiedPackets[] = $packet;
+                continue;
+            }
+
+            $modifiedEntries = [];
+
+            foreach ($packet->entries as $entry) {
+                $playerName = $entry->username;
+                $player = $this->plugin->getServer()->getPlayerExact($playerName);
+
+                if ($player === null || !$this->plugin->getAuthenticationService()->isPlayerAuthenticated($player)) {
+                    $hasChanges = true;
+                    continue;
+                }
+
+                $modifiedEntries[] = $entry;
+            }
+
+            if (empty($modifiedEntries)) {
+                $hasChanges = true;
+                continue;
+            }
+
+            if (count($modifiedEntries) !== count($packet->entries)) {
+                $packet->entries = $modifiedEntries;
+                $hasChanges = true;
+            }
+
+            $modifiedPackets[] = $packet;
+        }
+
+        if ($hasChanges) {
+            $event->setPackets($modifiedPackets);
+        }
     }
 }

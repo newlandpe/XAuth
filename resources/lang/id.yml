@@ -51,7 +51,7 @@ messages:
   force_change_password_form_title: "Perubahan Kata Sandi Paksa"
   force_change_password_closed: "§cAnda harus mengubah kata sandi Anda untuk melanjutkan."
   resetpassword_command_description: "Setel ulang kata sandi Anda"
-  resetpassword_command_usage: "§cPenggunaan: /resetpassword <kata_sandi_lama> <kata_sandi_baru>"
+  resetpassword_command_usage: "§cPenggunaan: /resetpassword <kata_sandi_lama> <kata_sandi_baru> <konfirmasi_kata_sandi_baru>"
   account_locked_by_admin: "§cAkun Anda telah dikunci oleh administrator."
   account_unregistered_by_admin: "§eAkun Anda telah dibatalkan pendaftarannya oleh administrator. Silakan daftar lagi."
   session_ended_by_admin: "§eSesi Anda telah diakhiri oleh administrator. Silakan masuk lagi."
@@ -122,6 +122,9 @@ messages:
   xauth_sessions_terminateall_success: "§aSemua sesi untuk {player_name} dihentikan."
   xauth_sessions_cleanup_success: "§aSesi kedaluwarsa dibersihkan."
   xauth_sessions_unknown_subcommand: "§cSub-perintah sesi tidak dikenal. Gunakan /xauth sessions <list|terminate|terminateall|cleanup>"
+  waterdog_kick_message: "§cAnda tidak terautentikasi melalui WaterdogPE!\n§cHarap sambungkan melalui proxy WaterdogPE."
+  waterdog_online_mode_kick: "§cServer ini dalam mode online dan tidak dapat menerima login dari proksi."
+  waterdog_verify_xuid_kick: "§cServer ini mengaktifkan verifikasi XUID dan tidak dapat menerima login dari proksi."
 
 forms:
   login:
@@ -138,6 +141,14 @@ forms:
     confirm_password_placeholder: "Masukkan kata sandi Anda lagi"
     rules_toggle_label: "Saya telah membaca dan menyetujui peraturan server."
     rules_error_message: "§cAnda harus menyetujui peraturan untuk mendaftar."
+    rules_text: |
+      Selamat datang di server kami!
+      Harap baca dan setujui peraturan berikut:
+      1. Hormati pemain lain.
+      2. Jangan melakukan griefing atau mencuri.
+      3. Jangan curang atau mengeksploitasi.
+      4. Ikuti instruksi staf.
+      Dengan mendaftar, Anda menyetujui peraturan ini.
   changepassword:
     title: "Ubah Kata Sandi"
     content: ""
@@ -145,16 +156,27 @@ forms:
     new_password_label: "Kata Sandi Baru"
     confirm_new_password_label: "Konfirmasi Kata Sandi Baru"
 
+scorehud_tags:
+  is_authenticated:
+    true: "Ya"
+    false: "Tidak"
+  is_registered:
+    true: "Ya"
+    false: "Tidak"
+  is_locked:
+    true: "Ya"
+    false: "Tidak"
+
 placeholders:
   is_authenticated:
-    yes: "Ya"
-    no: "Tidak"
+    true: "Ya"
+    false: "Tidak"
   is_registered:
-    yes: "Ya"
-    no: "Tidak"
+    true: "Ya"
+    false: "Tidak"
   is_locked:
-    yes: "Ya"
-    no: "Tidak"
+    true: "Ya"
+    false: "Tidak"
 
 titles:
   register_prompt:
