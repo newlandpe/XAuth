@@ -31,9 +31,9 @@ class PlayerPreAuthenticateEvent extends PlayerEvent implements Cancellable {
         return $this->loginType;
     }
 
-    public function cancel(?string $kickMessage = null): void {
+    public function disallow(?string $kickMessage = null): void {
         $this->kickMessage = $kickMessage;
-        $this->setCancelled(true);
+        $this->cancel();
     }
 
     public function getKickMessage(): ?string {
