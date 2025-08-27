@@ -2,9 +2,9 @@ name: XAuth
 version: 1.0.0
 main: Luthfi\XAuth\Main
 api: 5.0.0
-author: Luthfi
-description: A simple auth plugin for PocketMine-MP
-website: https://github.com/LuthMC/XAuth
+authors: [ChernegaSergiy, Luthfi]
+description: "A simple, secure, and extensible authentication plugin for PocketMine-MP, modernized for 2FA integration."
+website: https://github.com/newlandpe/XAuth
 softdepend: ["PlaceholderAPI", "ScoreHud"]
 
 permissions:
