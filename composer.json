@@ -1,0 +1,30 @@
+{
+    "name": "luthfi/xauth",
+    "description": "A simple, secure, and extensible authentication plugin for PocketMine-MP, modernized for 2FA integration.",
+    "type": "project",
+    "license": "LicenseRef-CSSM-Unlimited-2.0",
+    "authors": [
+        {
+            "name": "LuthMC",
+            "email": "contact@luthmc.my.id"
+        },
+        {
+            "name": "Sergiy Chernega",
+            "email": "chernegasergiy3@gmail.com"
+        }
+    ],
+    "require": {
+        "php": ">=8.0",
+        "pocketmine/pocketmine-mp": "^5.3.0",
+        "sof3/await-generator": "^4.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Luthfi\\XAuth\\": "src/Luthfi/XAuth/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true
+    }
+}
