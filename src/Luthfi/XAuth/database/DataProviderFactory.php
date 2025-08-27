@@ -35,10 +35,14 @@ class DataProviderFactory {
     /**
      * @param Main $plugin
      */
-    public static function create(Main $plugin, array $config): DataProviderInterface {
+    public static function create(Main $plugin, array $config): Await {
         $providerType = strtolower((string)($config['type'] ?? 'yaml'));
 
-        return self::createProvider($plugin, $providerType);
+        return Await::f2c(function () use ($plugin, $providerType) {
+            $provider = self::createProvider($plugin, $providerType);
+            yield $provider->initialize(); // Await the initialization
+            return $provider;
+        });
     }
 
     public static function createProvider(Main $plugin, string $providerType): DataProviderInterface {

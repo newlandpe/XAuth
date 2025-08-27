@@ -53,17 +53,19 @@ abstract class AbstractDataProvider implements DataProviderInterface {
             $this->getSqlMap(),
             $this->plugin->getConfig()->getNested('database.log_queries', false)
         );
+    }
 
-        Await::f2c(function () {
+    public function initialize(): Await {
+        return Await::f2c(function () {
             try {
                 yield $this->connector->asyncGeneric('xauth.init');
                 $this->plugin->getLogger()->debug("Database tables initialized.");
             } catch (SqlError $error) {
                 $this->plugin->getLogger()->error("Failed to initialize database tables: " . $error->getMessage());
+                throw $error; // Re-throw to propagate the error
             }
+            $this->init(); // Call init() after database tables are initialized
         });
-
-        $this->init();
     }
 
     abstract protected function init(): void;

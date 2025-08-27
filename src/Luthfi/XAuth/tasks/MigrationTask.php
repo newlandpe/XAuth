@@ -25,10 +25,11 @@
 
 declare(strict_types=1);
 
-namespace Luthfi\XAuth\utils;
+namespace Luthfi\XAuth\tasks;
 
 use Luthfi\XAuth\database\DataProviderFactory;
 use Luthfi\XAuth\Main;
+use Luthfi\XAuth\utils\MigrationManager;
 use pocketmine\scheduler\AsyncTask;
 use pocketmine\Server;
 use Throwable;

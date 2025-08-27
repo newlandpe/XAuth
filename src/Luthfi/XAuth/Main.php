@@ -55,11 +55,17 @@ use Luthfi\XAuth\steps\AuthenticationStep;
 use Luthfi\XAuth\steps\AutoLoginStep;
 use Luthfi\XAuth\steps\XAuthLoginStep;
 use Luthfi\XAuth\steps\XAuthRegisterStep;
+use Luthfi\XAuth\tasks\CleanupSessionsTask;
+use Luthfi\XAuth\tasks\ClearTitleTask;
+use Luthfi\XAuth\tasks\KickTask;
+use Luthfi\XAuth\tasks\SendTitleTask;
 use Luthfi\XAuth\utils\MigrationManager;
 use MohamadRZ4\Placeholder\PlaceholderAPI;
 use pocketmine\player\Player;
 use pocketmine\plugin\PluginBase;
+use pocketmine\scheduler\Task;
 use pocketmine\utils\Config;
+use SOFe\AwaitGenerator\Await;
 
 class Main extends PluginBase {
 
@@ -100,7 +106,25 @@ class Main extends PluginBase {
         $this->checkConfigVersion();
 
         $this->migrationManager = new MigrationManager($this);
-        $this->dataProvider = DataProviderFactory::create($this, $this->configData->get('database'));
+
+        Await::f2c(function () {
+            try {
+                $this->dataProvider = yield DataProviderFactory::create($this, $this->configData->get('database'));
+                $this->getLogger()->debug("DataProvider initialized.");
+
+                $autoLoginEnabled = (bool)($this->configData->getNested("auto-login.enabled") ?? false);
+                if ($autoLoginEnabled) {
+                    $cleanupInterval = (int)($this->configData->getNested("auto-login.cleanup_interval_minutes") ?? 60);
+                    $this->getScheduler()->scheduleRepeatingTask(new CleanupSessionsTask($this), $cleanupInterval * 20 * 60);
+                    $this->getLogger()->debug("Expired session cleanup task scheduled.");
+                }
+            } catch (\Throwable $e) {
+                $this->getLogger()->error("Failed to initialize DataProvider or schedule cleanup task: " . $e->getMessage());
+                $this->getServer()->getPluginManager()->disablePlugin($this);
+                return;
+            }
+        });
+
         $this->passwordValidator = new PasswordValidator($this);
         $this->formManager = new FormManager($this);
         $this->passwordHasher = new PasswordHasher($this);
@@ -147,24 +171,6 @@ class Main extends PluginBase {
         $this->getServer()->getCommandMap()->register("unregister", new UnregisterCommand($this));
         $this->getServer()->getCommandMap()->register("xauth", new XAuthCommand($this));
 
-        $autoLoginEnabled = (bool)($this->configData->getNested("auto-login.enabled") ?? false);
-
-        if ($autoLoginEnabled) {
-            $cleanupInterval = (int)($this->configData->getNested("auto-login.cleanup_interval_minutes") ?? 60);
-            $this->getScheduler()->scheduleRepeatingTask(new class($this) extends \pocketmine\scheduler\Task {
-                private Main $plugin;
-
-                public function __construct(Main $plugin) {
-                    $this->plugin = $plugin;
-                }
-
-                public function onRun(): void {
-                    $this->plugin->getDataProvider()->cleanupExpiredSessions();
-                    $this->plugin->getLogger()->debug("Cleaned up expired sessions.");
-                }
-            }, $cleanupInterval * 20 * 60); // Convert minutes to ticks (20 ticks per second)
-        }
-
         $placeholderAPI = $this->getServer()->getPluginManager()->getPlugin("PlaceholderAPI");
         if ($placeholderAPI instanceof PlaceholderAPI) {
             $placeholderAPI->registerExpansion(new XAuthExpansion($this));
@@ -189,23 +195,7 @@ class Main extends PluginBase {
                 $subtitle = (string)($titleConfig["subtitle"] ?? "");
                 $interval = (int)(($titleConfig["interval"] ?? 0) * 20);
 
-                $handler = $this->getScheduler()->scheduleRepeatingTask(new class($player, $title, $subtitle) extends \pocketmine\scheduler\Task {
-                    private Player $player;
-                    private string $title;
-                    private string $subtitle;
-
-                    public function __construct(Player $player, string $title, string $subtitle) {
-                        $this->player = $player;
-                        $this->title = $title;
-                        $this->subtitle = $subtitle;
-                    }
-
-                    public function onRun(): void {
-                        if ($this->player->isOnline()) {
-                            $this->player->sendTitle($this->title, $this->subtitle);
-                        }
-                    }
-                }, $interval);
+                $handler = $this->getScheduler()->scheduleRepeatingTask(new SendTitleTask($player, $title, $subtitle), $interval);
                 $this->titleTasks[$player->getName()] = $handler;
             }
         }
@@ -338,40 +328,12 @@ class Main extends PluginBase {
     public function scheduleKickTask(Player $player): void {
         $loginTimeout = (int)($this->configData->getNested("session.login-timeout") ?? 30);
         if ($loginTimeout > 0) {
-            $this->kickTasks[$player->getName()] = $this->getScheduler()->scheduleDelayedTask(new class($this, $player) extends \pocketmine\scheduler\Task {
-                private Main $plugin;
-
-                public function __construct(Main $plugin, Player $player) {
-                    $this->plugin = $plugin;
-                    $this->player = $player;
-                }
-
-                public function onRun(): void {
-                    if ($this->player->isOnline() && !$this->plugin->getAuthenticationService()->isPlayerAuthenticated($this->player)) {
-                        $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["login_timeout"] ?? "§cYou took too long to log in.");
-                        $this->player->kick($message);
-                    }
-                }
-            }, $loginTimeout * 20); // Convert seconds to ticks
+            $this->kickTasks[$player->getName()] = $this->getScheduler()->scheduleDelayedTask(new KickTask($this, $player), $loginTimeout * 20);
         }
     }
 
     public function scheduleClearTitleTask(Player $player, int $delayTicks): void {
-        $this->getScheduler()->scheduleDelayedTask(new class($this, $player) extends \pocketmine\scheduler\Task {
-            private Main $plugin;
-            private Player $player;
-
-            public function __construct(Main $plugin, Player $player) {
-                $this->plugin = $plugin;
-                $this->player = $player;
-            }
-
-            public function onRun(): void {
-                if ($this->player->isOnline()) {
-                    $this->plugin->clearTitleTask($this->player);
-                }
-            }
-        }, $delayTicks);
+        $this->getScheduler()->scheduleDelayedTask(new ClearTitleTask($this, $player), $delayTicks);
     }
 
     public function onDisable(): void {

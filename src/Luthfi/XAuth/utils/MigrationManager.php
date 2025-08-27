@@ -29,6 +29,7 @@ namespace Luthfi\XAuth\utils;
 
 use Luthfi\XAuth\database\DataProviderFactory;
 use Luthfi\XAuth\Main;
+use Luthfi\XAuth\tasks\MigrationTask;
 
 class MigrationManager {
 
