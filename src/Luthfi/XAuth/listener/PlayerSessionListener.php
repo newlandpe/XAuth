@@ -113,38 +113,7 @@ class PlayerSessionListener implements Listener {
                 return;
             }
 
-            // If authentication steps are registered, take over the flow
-            if (!empty($this->plugin->getAuthenticationSteps()) && !empty($this->plugin->getOrderedAuthenticationSteps())) {
-                $this->plugin->startAuthenticationStep($player); // Start the managed authentication flow
-                return;
-            }
-
-            // Fallback to old behavior if no flow is defined in config
-            $this->plugin->getPlayerStateService()->protectPlayer($player);
-            $playerData = yield from $this->plugin->getDataProvider()->getPlayer($player);
-            $formsEnabled = (bool)($this->plugin->getConfig()->getNested("forms.enabled") ?? true);
-
-            if ($playerData !== null) {
-                // Normal login flow
-                $this->plugin->scheduleKickTask($player);
-                $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["login_prompt"] ?? "");
-                $player->sendMessage($message);
-                if ($formsEnabled) {
-                    $this->plugin->getFormManager()->sendLoginForm($player);
-                } else {
-                    $this->plugin->sendTitleMessage($player, "login_prompt");
-                }
-            } else {
-                // Registration flow
-                $this->plugin->scheduleKickTask($player);
-                $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["register_prompt"] ?? "");
-                $player->sendMessage($message);
-                if ($formsEnabled) {
-                    $this->plugin->getFormManager()->sendRegisterForm($player);
-                } else {
-                    $this->plugin->sendTitleMessage($player, "register_prompt");
-                }
-            }
+            $this->plugin->startAuthenticationStep($player);
         });
     }
 

@@ -43,7 +43,7 @@ class AuthenticationFlowManager {
     /** @var array<string, string> */
     private array $playerAuthenticationFlow = []; // playerName => currentStepId (index in ordered steps)
 
-    private array $orderedAuthenticationSteps = []; // Loaded from config
+    private array $orderedAuthenticationSteps = [];
 
     /** @var array<string, AuthenticationContext> */
     private array $playerContexts = [];
