@@ -92,28 +92,30 @@ class AuthenticationFlowManager {
 
         // If no ordered steps are defined in config, let XAuth handle it normally
         if (empty($this->orderedAuthenticationSteps)) {
-            $this->plugin->getLogger()->debug("No authentication flow order defined. Player '{$playerName}' will proceed with default XAuth flow.");
-            // Trigger XAuth's default login/register prompt here if needed
-            $playerData = $this->plugin->getDataProvider()->getPlayer($player);
-            $this->plugin->scheduleKickTask($player);
-            $formsEnabled = $this->plugin->getConfig()->getNested("forms.enabled", true);
-            if ($playerData !== null) {
-                $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["login_prompt"] ?? "");
-                $player->sendMessage($message);
-                if ($formsEnabled) {
-                    $this->plugin->getFormManager()->sendLoginForm($player);
+            Await::f2c(function() use ($player, $playerName) {
+                $this->plugin->getLogger()->debug("No authentication flow order defined. Player '{$playerName}' will proceed with default XAuth flow.");
+                // Trigger XAuth's default login/register prompt here if needed
+                $playerData = yield from $this->plugin->getDataProvider()->getPlayer($player);
+                $this->plugin->scheduleKickTask($player);
+                $formsEnabled = $this->plugin->getConfig()->getNested("forms.enabled", true);
+                if ($playerData !== null) {
+                    $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["login_prompt"] ?? "");
+                    $player->sendMessage($message);
+                    if ($formsEnabled) {
+                        $this->plugin->getFormManager()->sendLoginForm($player);
+                    } else {
+                        $this->plugin->sendTitleMessage($player, "login_prompt");
+                    }
                 } else {
-                    $this->plugin->sendTitleMessage($player, "login_prompt");
+                    $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["register_prompt"] ?? "");
+                    $player->sendMessage($message);
+                    if ($formsEnabled) {
+                        $this->plugin->getFormManager()->sendRegisterForm($player);
+                    } else {
+                        $this->plugin->sendTitleMessage($player, "register_prompt");
+                    }
                 }
-            } else {
-                $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["register_prompt"] ?? "");
-                $player->sendMessage($message);
-                if ($formsEnabled) {
-                    $this->plugin->getFormManager()->sendRegisterForm($player);
-                } else {
-                    $this->plugin->sendTitleMessage($player, "register_prompt");
-                }
-            }
+            });
             return;
         }
 

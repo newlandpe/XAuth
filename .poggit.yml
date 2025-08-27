@@ -6,6 +6,6 @@ projects:
     path: ""
     libs:
       - src: poggit/libasynql/libasynql
-        version: ^4.0
+        version: ^4.2.3
       - src: jojoe77777/FormAPI/libFormAPI
         version: ^2.1.1
