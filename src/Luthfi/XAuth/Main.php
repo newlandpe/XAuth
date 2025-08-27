@@ -109,7 +109,7 @@ class Main extends PluginBase {
 
         Await::f2c(function () {
             try {
-                $this->dataProvider = yield DataProviderFactory::create($this, $this->configData->get('database'));
+                $this->dataProvider = yield from DataProviderFactory::create($this, $this->configData->get('database'));
                 $this->getLogger()->debug("DataProvider initialized.");
 
                 $autoLoginEnabled = (bool)($this->configData->getNested("auto-login.enabled") ?? false);
