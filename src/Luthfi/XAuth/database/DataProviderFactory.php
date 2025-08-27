@@ -29,6 +29,7 @@ namespace Luthfi\XAuth\database;
 
 use InvalidArgumentException;
 use Luthfi\XAuth\Main;
+use SOFe\AwaitGenerator\Await;
 
 class DataProviderFactory {
 
@@ -40,7 +41,7 @@ class DataProviderFactory {
 
         return Await::f2c(function () use ($plugin, $providerType) {
             $provider = self::createProvider($plugin, $providerType);
-            yield $provider->initialize(); // Await the initialization
+            yield $provider->initialize();
             return $provider;
         });
     }

@@ -62,9 +62,9 @@ abstract class AbstractDataProvider implements DataProviderInterface {
                 $this->plugin->getLogger()->debug("Database tables initialized.");
             } catch (SqlError $error) {
                 $this->plugin->getLogger()->error("Failed to initialize database tables: " . $error->getMessage());
-                throw $error; // Re-throw to propagate the error
+                throw $error;
             }
-            $this->init(); // Call init() after database tables are initialized
+            $this->init();
         });
     }
 
