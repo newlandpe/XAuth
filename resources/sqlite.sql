@@ -169,3 +169,7 @@ DELETE FROM sessions WHERE expiration_time <= :current_time;
 -- # :ip string
 SELECT COUNT(*) as count FROM players WHERE registration_ip = :ip;
 -- # }
+
+-- # { xauth.pragma.foreign_keys
+PRAGMA foreign_keys = ON;
+-- # }

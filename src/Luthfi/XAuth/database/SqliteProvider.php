@@ -35,7 +35,7 @@ class SqliteProvider extends AbstractDataProvider {
     protected function init(): void {
         Await::f2c(function () {
             try {
-                yield $this->connector->asyncGeneric('PRAGMA foreign_keys = ON');
+                yield $this->connector->asyncGeneric('xauth.pragma.foreign_keys');
                 $this->plugin->getLogger()->debug("SQLite foreign keys enabled.");
             } catch (SqlError $error) {
                 $this->plugin->getLogger()->error("Failed to enable SQLite foreign keys: " . $error->getMessage());
