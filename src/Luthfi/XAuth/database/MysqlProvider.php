@@ -29,7 +29,10 @@ namespace Luthfi\XAuth\database;
 
 class MysqlProvider extends AbstractDataProvider {
 
-    protected function init(): void {
+    protected function init(): Await {
+        return Await::f2c(function () {
+            // No specific async initialization for MySQL needed here, but still needs to return Await
+        });
     }
 
     protected function getSqlMap(): array {

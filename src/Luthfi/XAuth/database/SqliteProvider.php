@@ -32,8 +32,8 @@ use SOFe\AwaitGenerator\Await;
 
 class SqliteProvider extends AbstractDataProvider {
 
-    protected function init(): void {
-        Await::f2c(function () {
+    protected function init(): Await {
+        return Await::f2c(function () {
             try {
                 yield $this->connector->asyncGeneric('xauth.pragma.foreign_keys');
                 $this->plugin->getLogger()->debug("SQLite foreign keys enabled.");

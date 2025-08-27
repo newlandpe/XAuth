@@ -64,11 +64,11 @@ abstract class AbstractDataProvider implements DataProviderInterface {
                 $this->plugin->getLogger()->error("Failed to initialize database tables: " . $error->getMessage());
                 throw $error;
             }
-            $this->init();
+            yield $this->init();
         });
     }
 
-    abstract protected function init(): void;
+    abstract protected function init(): Await;
 
     abstract protected function getSqlMap(): array;
 
