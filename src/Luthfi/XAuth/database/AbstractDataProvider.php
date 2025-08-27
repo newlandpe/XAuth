@@ -71,7 +71,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
 
     abstract protected function getSqlMap(): array;
 
-    public function getPlayer(Player|OfflinePlayer $player): \Generator {
+    public function getPlayer(Player|OfflinePlayer $player): Await {
         $name = strtolower($player->getName());
         return Await::f2c(function () use ($name) {
             try {
@@ -84,7 +84,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
         });
     }
 
-    public function isPlayerRegistered(string $playerName): \Generator {
+    public function isPlayerRegistered(string $playerName): Await {
         $name = strtolower($playerName);
         return Await::f2c(function () use ($name) {
             try {
@@ -97,7 +97,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
         });
     }
 
-    public function registerPlayer(Player $player, string $hashedPassword): \Generator {
+    public function registerPlayer(Player $player, string $hashedPassword): Await {
         $name = strtolower($player->getName());
         $ip = $player->getNetworkSession()->getIp();
         return Await::f2c(function () use ($name, $hashedPassword, $ip) {
@@ -117,7 +117,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
         });
     }
 
-    public function updatePlayerIp(Player $player): \Generator {
+    public function updatePlayerIp(Player $player): Await {
         $name = strtolower($player->getName());
         $ip = $player->getNetworkSession()->getIp();
         return Await::f2c(function () use ($name, $ip) {
@@ -134,7 +134,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
         });
     }
 
-    public function changePassword(Player|OfflinePlayer $player, string $newHashedPassword): \Generator {
+    public function changePassword(Player|OfflinePlayer $player, string $newHashedPassword): Await {
         $name = strtolower($player->getName());
         return Await::f2c(function () use ($name, $newHashedPassword) {
             try {
@@ -149,7 +149,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
         });
     }
 
-    public function unregisterPlayer(string $playerName): \Generator {
+    public function unregisterPlayer(string $playerName): Await {
         $name = strtolower($playerName);
         return Await::f2c(function () use ($name) {
             try {
@@ -163,7 +163,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
         });
     }
 
-    public function setPlayerLocked(string $playerName, bool $locked): \Generator {
+    public function setPlayerLocked(string $playerName, bool $locked): Await {
         $name = strtolower($playerName);
         return Await::f2c(function () use ($name, $locked) {
             try {
@@ -178,7 +178,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
         });
     }
 
-    public function isPlayerLocked(string $playerName): \Generator {
+    public function isPlayerLocked(string $playerName): Await {
         $name = strtolower($playerName);
         return Await::f2c(function () use ($name) {
             try {
@@ -191,7 +191,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
         });
     }
 
-    public function setBlockedUntil(string $playerName, int $timestamp): \Generator {
+    public function setBlockedUntil(string $playerName, int $timestamp): Await {
         $name = strtolower($playerName);
         return Await::f2c(function () use ($name, $timestamp) {
             try {
@@ -206,7 +206,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
         });
     }
 
-    public function getBlockedUntil(string $playerName): \Generator {
+    public function getBlockedUntil(string $playerName): Await {
         $name = strtolower($playerName);
         return Await::f2c(function () use ($name) {
             try {
@@ -219,7 +219,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
         });
     }
 
-    public function setMustChangePassword(string $playerName, bool $required): \Generator {
+    public function setMustChangePassword(string $playerName, bool $required): Await {
         $name = strtolower($playerName);
         return Await::f2c(function () use ($name, $required) {
             try {
@@ -234,7 +234,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
         });
     }
 
-    public function mustChangePassword(string $playerName): \Generator {
+    public function mustChangePassword(string $playerName): Await {
         $name = strtolower($playerName);
         return Await::f2c(function () use ($name) {
             try {
@@ -247,7 +247,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
         });
     }
 
-    public function getAllPlayerData(): \Generator {
+    public function getAllPlayerData(): Await {
         return Await::f2c(function () {
             try {
                 $rows = yield $this->connector->asyncSelect('xauth.players.get_all_data');
@@ -263,7 +263,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
         });
     }
 
-    public function registerPlayerRaw(string $playerName, array $data): \Generator {
+    public function registerPlayerRaw(string $playerName, array $data): Await {
         $name = strtolower($playerName);
         return Await::f2c(function () use ($name, $data) {
             try {
@@ -285,7 +285,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
         });
     }
 
-    public function createSession(string $playerName, string $ipAddress, string $deviceId, int $lifetimeSeconds): \Generator {
+    public function createSession(string $playerName, string $ipAddress, string $deviceId, int $lifetimeSeconds): Await {
         $sessionId = bin2hex(random_bytes(16));
         $loginTime = time();
         $expirationTime = $loginTime + $lifetimeSeconds;
@@ -310,7 +310,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
         });
     }
 
-    public function getSession(string $sessionId): \Generator {
+    public function getSession(string $sessionId): Await {
         return Await::f2c(function () use ($sessionId) {
             try {
                 $rows = yield $this->connector->asyncSelect('xauth.sessions.get', [
@@ -325,7 +325,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
         });
     }
 
-    public function getSessionsByPlayer(string $playerName): \Generator {
+    public function getSessionsByPlayer(string $playerName): Await {
         $name = strtolower($playerName);
         return Await::f2c(function () use ($name) {
             try {
@@ -345,7 +345,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
         });
     }
 
-    public function deleteSession(string $sessionId): \Generator {
+    public function deleteSession(string $sessionId): Await {
         return Await::f2c(function () use ($sessionId) {
             try {
                 yield $this->connector->asyncChange('xauth.sessions.delete', [
@@ -358,7 +358,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
         });
     }
 
-    public function deleteAllSessionsForPlayer(string $playerName): \Generator {
+    public function deleteAllSessionsForPlayer(string $playerName): Await {
         $name = strtolower($playerName);
         return Await::f2c(function () use ($name) {
             try {
@@ -372,7 +372,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
         });
     }
 
-    public function updateSessionLastActivity(string $sessionId): \Generator {
+    public function updateSessionLastActivity(string $sessionId): Await {
         return Await::f2c(function () use ($sessionId) {
             try {
                 yield $this->connector->asyncChange('xauth.sessions.update_last_activity', [
@@ -386,7 +386,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
         });
     }
 
-    public function refreshSession(string $sessionId, int $newLifetimeSeconds): \Generator {
+    public function refreshSession(string $sessionId, int $newLifetimeSeconds): Await {
         return Await::f2c(function () use ($sessionId, $newLifetimeSeconds) {
             try {
                 yield $this->connector->asyncChange('xauth.sessions.refresh', [
@@ -400,7 +400,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
         });
     }
 
-    public function cleanupExpiredSessions(): \Generator {
+    public function cleanupExpiredSessions(): Await {
         return Await::f2c(function () {
             try {
                 yield $this->connector->asyncChange('xauth.sessions.cleanup_expired', [
@@ -413,7 +413,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
         });
     }
 
-    public function getRegistrationCountByIp(string $ipAddress): \Generator {
+    public function getRegistrationCountByIp(string $ipAddress): Await {
         return Await::f2c(function () use ($ipAddress) {
             try {
                 $rows = yield $this->connector->asyncSelect('xauth.players.get_registration_count_by_ip', [
