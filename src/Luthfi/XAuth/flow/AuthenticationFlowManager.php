@@ -95,7 +95,6 @@ class AuthenticationFlowManager {
             $this->plugin->getLogger()->debug("No authentication flow order defined. Player '{$playerName}' will proceed with default XAuth flow.");
             // Trigger XAuth's default login/register prompt here if needed
             $playerData = $this->plugin->getDataProvider()->getPlayer($player);
-            $this->plugin->getPlayerStateService()->protectPlayer($player);
             $this->plugin->scheduleKickTask($player);
             $formsEnabled = $this->plugin->getConfig()->getNested("forms.enabled", true);
             if ($playerData !== null) {
