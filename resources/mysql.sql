@@ -1,5 +1,6 @@
 -- #!mysql
 -- #{xauth.players.init}
+-- #>
 CREATE TABLE IF NOT EXISTS players (
     name VARCHAR(255) PRIMARY KEY,
     password VARCHAR(255),
@@ -11,8 +12,10 @@ CREATE TABLE IF NOT EXISTS players (
     blocked_until INT DEFAULT 0,
     must_change_password BOOLEAN DEFAULT FALSE
 );
+-- #<
 
 -- #{xauth.sessions.init}
+-- #>
 CREATE TABLE IF NOT EXISTS sessions (
     session_id VARCHAR(255) PRIMARY KEY,
     player_name VARCHAR(255) NOT NULL,
@@ -23,6 +26,7 @@ CREATE TABLE IF NOT EXISTS sessions (
     expiration_time INT,
     FOREIGN KEY (player_name) REFERENCES players(name) ON DELETE CASCADE
 );
+-- #<
 
 -- #{xauth.players.get}
 SELECT * FROM players WHERE name = :name;
