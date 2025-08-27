@@ -96,6 +96,8 @@ messages:
   xauth_migration_complete: "§aMigrasi selesai!"
   xauth_migration_migrated_count: "§a- Dimigrasi: {count} pemain"
   xauth_migration_skipped_count: "§e- Dilewati (sudah ada): {count} pemain"
+  xauth_migration_progress: "§aDimigrasi: {migrated}/{total} (Dilewati: {skipped})"
+  xauth_migration_in_progress: "§cMigrasi sedang berlangsung. Harap tunggu hingga selesai."
   xauth_migration_error_prefix: "§cKesalahan: "
   xauth_migration_unexpected_error_prefix: "§cTerjadi kesalahan tak terduga selama migrasi: "
   set_password_success: "§aKata sandi pemain telah berhasil diatur."

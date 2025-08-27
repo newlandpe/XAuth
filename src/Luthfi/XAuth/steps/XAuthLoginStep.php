@@ -1,5 +1,28 @@
 <?php
 
+/*
+ *
+ * __  __    _         _   _
+ * \ \/ /   / \  _   _| |_| |__
+ *  \  /   / _ \| | | | __| '_ \
+ *  /  \  / ___ \ |_| | |_| | | |
+ * /_/\_\/_/   \_\__,_|\__|_| |_|
+ *
+ * This program is free software: you can redistribute and/or modify
+ * it under the terms of the CSSM Unlimited License v2.0.
+ *
+ * This license permits unlimited use, modification, and distribution
+ * for any purpose while maintaining authorship attribution.
+ *
+ * The software is provided "as is" without warranty of any kind.
+ *
+ * @author LuthMC
+ * @author Sergiy Chernega
+ * @link https://chernega.eu.org/
+ *
+ *
+ */
+
 declare(strict_types=1);
 
 namespace Luthfi\XAuth\steps;
@@ -23,13 +46,12 @@ class XAuthLoginStep implements AuthenticationStep, FinalizableStep {
 
     public function start(Player $player): void {
         if ($this->plugin->getAuthenticationService()->isPlayerAuthenticated($player)) {
-            $this->complete($player); // Player is already authenticated, so complete this step
+            $this->skip($player);
             return;
         }
 
         $playerData = $this->plugin->getDataProvider()->getPlayer($player);
         if ($playerData !== null) {
-            // Player is registered, prompt for login
             $this->plugin->getPlayerStateService()->protectPlayer($player);
             $this->plugin->scheduleKickTask($player);
             $formsEnabled = (bool)($this->plugin->getConfig()->getNested("forms.enabled") ?? true);
@@ -41,7 +63,6 @@ class XAuthLoginStep implements AuthenticationStep, FinalizableStep {
                 $this->plugin->sendTitleMessage($player, "login_prompt");
             }
         } else {
-            // Player is not registered, skip to the next step (register)
             $this->skip($player); 
         }
     }
@@ -51,8 +72,6 @@ class XAuthLoginStep implements AuthenticationStep, FinalizableStep {
     }
 
     public function skip(Player $player): void {
-        // This step is skipped if the player is not registered (needs to register instead)
-        // or if they are already authenticated.
         $this->plugin->getAuthenticationFlowManager()->skipStep($player, $this->getId());
     }
 

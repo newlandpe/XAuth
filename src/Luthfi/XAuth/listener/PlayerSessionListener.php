@@ -1,5 +1,28 @@
 <?php
 
+/*
+ *
+ * __  __    _         _   _
+ * \ \/ /   / \  _   _| |_| |__
+ *  \  /   / _ \| | | | __| '_ \
+ *  /  \  / ___ \ |_| | |_| | | |
+ * /_/\_\/_/   \_\__,_|\__|_| |_|
+ *
+ * This program is free software: you can redistribute and/or modify
+ * it under the terms of the CSSM Unlimited License v2.0.
+ *
+ * This license permits unlimited use, modification, and distribution
+ * for any purpose while maintaining authorship attribution.
+ *
+ * The software is provided "as is" without warranty of any kind.
+ *
+ * @author LuthMC
+ * @author Sergiy Chernega
+ * @link https://chernega.eu.org/
+ *
+ *
+ */
+
 declare(strict_types=1);
 
 namespace Luthfi\XAuth\listener;
@@ -11,6 +34,7 @@ use pocketmine\event\player\PlayerPreLoginEvent;
 use pocketmine\event\player\PlayerQuitEvent;
 use pocketmine\event\server\DataPacketSendEvent;
 use pocketmine\network\mcpe\protocol\PlayerListPacket;
+use SOFe\AwaitGenerator\Await;
 
 class PlayerSessionListener implements Listener {
 
@@ -60,18 +84,20 @@ class PlayerSessionListener implements Listener {
             return;
         }
 
-        if ($this->plugin->getDataProvider()->isPlayerLocked($name)) {
-            $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["account_locked_by_admin"] ?? "");
-            $event->setKickFlag(PlayerPreLoginEvent::KICK_FLAG_BANNED, $message);
-            return;
-        }
+        Await::f2c(function () use ($name, $event, $bruteforceConfig) {
+            if (yield from $this->plugin->getDataProvider()->isPlayerLocked($name)) {
+                $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["account_locked_by_admin"] ?? "");
+                $event->setKickFlag(PlayerPreLoginEvent::KICK_FLAG_BANNED, $message);
+                return;
+            }
 
-        if ((bool)($bruteforceConfig['enabled'] ?? false) && $this->plugin->getDataProvider()->getBlockedUntil($name) > time()) {
-            $remainingMinutes = (int)ceil(($this->plugin->getDataProvider()->getBlockedUntil($name) - time()) / 60);
-            $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["login_attempts_exceeded"] ?? "");
-            $message = str_replace('{minutes}', (string)$remainingMinutes, $message);
-            $event->setKickFlag(PlayerPreLoginEvent::KICK_FLAG_BANNED, $message);
-        }
+            if ((bool)($bruteforceConfig['enabled'] ?? false) && (yield from $this->plugin->getDataProvider()->getBlockedUntil($name)) > time()) {
+                $remainingMinutes = (int)ceil(((yield from $this->plugin->getDataProvider()->getBlockedUntil($name)) - time()) / 60);
+                $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["login_attempts_exceeded"] ?? "");
+                $message = str_replace('{minutes}', (string)$remainingMinutes, $message);
+                $event->setKickFlag(PlayerPreLoginEvent::KICK_FLAG_BANNED, $message);
+            }
+        });
     }
 
     /**
@@ -82,48 +108,52 @@ class PlayerSessionListener implements Listener {
         $player = $event->getPlayer();
         $authenticationService = $this->plugin->getAuthenticationService();
 
-        if ($authenticationService->isPlayerAuthenticated($player)) {
-            return;
-        }
-
-        // If authentication steps are registered, take over the flow
-        if (!empty($this->plugin->getAuthenticationSteps()) && !empty($this->plugin->getOrderedAuthenticationSteps())) {
-            $this->plugin->startAuthenticationStep($player); // Start the managed authentication flow
-            return;
-        }
-
-        // Fallback to old behavior if no flow is defined in config
-        $this->plugin->getPlayerStateService()->protectPlayer($player);
-        $playerData = $this->plugin->getDataProvider()->getPlayer($player);
-        $formsEnabled = (bool)($this->plugin->getConfig()->getNested("forms.enabled") ?? true);
-
-        if ($playerData !== null) {
-            // Normal login flow
-            $this->plugin->scheduleKickTask($player);
-            $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["login_prompt"] ?? "");
-            $player->sendMessage($message);
-            if ($formsEnabled) {
-                $this->plugin->getFormManager()->sendLoginForm($player);
-            } else {
-                $this->plugin->sendTitleMessage($player, "login_prompt");
+        Await::f2c(function () use ($player, $authenticationService) {
+            if (yield from $authenticationService->isPlayerAuthenticated($player)) {
+                return;
             }
-        } else {
-            // Registration flow
-            $this->plugin->scheduleKickTask($player);
-            $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["register_prompt"] ?? "");
-            $player->sendMessage($message);
-            if ($formsEnabled) {
-                $this->plugin->getFormManager()->sendRegisterForm($player);
-            } else {
-                $this->plugin->sendTitleMessage($player, "register_prompt");
+
+            // If authentication steps are registered, take over the flow
+            if (!empty($this->plugin->getAuthenticationSteps()) && !empty($this->plugin->getOrderedAuthenticationSteps())) {
+                $this->plugin->startAuthenticationStep($player); // Start the managed authentication flow
+                return;
             }
-        }
+
+            // Fallback to old behavior if no flow is defined in config
+            $this->plugin->getPlayerStateService()->protectPlayer($player);
+            $playerData = yield from $this->plugin->getDataProvider()->getPlayer($player);
+            $formsEnabled = (bool)($this->plugin->getConfig()->getNested("forms.enabled") ?? true);
+
+            if ($playerData !== null) {
+                // Normal login flow
+                $this->plugin->scheduleKickTask($player);
+                $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["login_prompt"] ?? "");
+                $player->sendMessage($message);
+                if ($formsEnabled) {
+                    $this->plugin->getFormManager()->sendLoginForm($player);
+                } else {
+                    $this->plugin->sendTitleMessage($player, "login_prompt");
+                }
+            } else {
+                // Registration flow
+                $this->plugin->scheduleKickTask($player);
+                $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["register_prompt"] ?? "");
+                $player->sendMessage($message);
+                if ($formsEnabled) {
+                    $this->plugin->getFormManager()->sendRegisterForm($player);
+                } else {
+                    $this->plugin->sendTitleMessage($player, "register_prompt");
+                }
+            }
+        });
     }
 
     public function onPlayerQuit(PlayerQuitEvent $event): void {
         $lowerPlayerName = strtolower($event->getPlayer()->getName());
         unset($this->plugin->deviceIds[$lowerPlayerName]); // Clean up in case of crash or unexpected quit
-        $this->plugin->getAuthenticationService()->handleQuit($event->getPlayer());
+        Await::f2c(function () use ($event) {
+            yield from $this->plugin->getAuthenticationService()->handleQuit($event->getPlayer());
+        });
     }
 
     public function onPacketSend(DataPacketSendEvent $event): void {
@@ -153,12 +183,14 @@ class PlayerSessionListener implements Listener {
                 $playerName = $entry->username;
                 $player = $this->plugin->getServer()->getPlayerExact($playerName);
 
-                if ($player === null || !$this->plugin->getAuthenticationService()->isPlayerAuthenticated($player)) {
-                    $hasChanges = true;
-                    continue;
-                }
+                Await::f2c(function () use ($player, &$modifiedEntries, &$hasChanges, $entry) {
+                    if ($player === null || !(yield from $this->plugin->getAuthenticationService()->isPlayerAuthenticated($player))) {
+                        $hasChanges = true;
+                        return;
+                    }
 
-                $modifiedEntries[] = $entry;
+                    $modifiedEntries[] = $entry;
+                });
             }
 
             if (empty($modifiedEntries)) {

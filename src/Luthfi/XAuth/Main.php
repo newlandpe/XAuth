@@ -1,5 +1,28 @@
 <?php
 
+/*
+ *
+ * __  __    _         _   _
+ * \ \/ /   / \  _   _| |_| |__
+ *  \  /   / _ \| | | | __| '_ \
+ *  /  \  / ___ \ |_| | |_| | | |
+ * /_/\_\/_/   \_\__,_|\__|_| |_|
+ *
+ * This program is free software: you can redistribute and/or modify
+ * it under the terms of the CSSM Unlimited License v2.0.
+ *
+ * This license permits unlimited use, modification, and distribution
+ * for any purpose while maintaining authorship attribution.
+ *
+ * The software is provided "as is" without warranty of any kind.
+ *
+ * @author LuthMC
+ * @author Sergiy Chernega
+ * @link https://chernega.eu.org/
+ *
+ *
+ */
+
 declare(strict_types=1);
 
 namespace Luthfi\XAuth;
@@ -77,8 +100,6 @@ class Main extends PluginBase {
         $this->checkConfigVersion();
 
         $this->migrationManager = new MigrationManager($this);
-        $this->migrationManager->runInitialMigration();
-
         $this->dataProvider = DataProviderFactory::create($this, $this->configData->get('database'));
         $this->passwordValidator = new PasswordValidator($this);
         $this->formManager = new FormManager($this);
@@ -92,7 +113,6 @@ class Main extends PluginBase {
 
         $this->authenticationFlowManager = new AuthenticationFlowManager($this);
 
-        // Register XAuth's built-in authentication steps
         $this->authenticationFlowManager->registerAuthenticationStep(new AutoLoginStep($this));
         $this->authenticationFlowManager->registerAuthenticationStep(new XAuthLoginStep($this));
         $this->authenticationFlowManager->registerAuthenticationStep(new XAuthRegisterStep($this));
@@ -273,10 +293,8 @@ class Main extends PluginBase {
      * @param string $completedStepId The ID of the step that was just completed.
      */
     public function completeAuthenticationStep(Player $player, string $completedStepId): void {
-        // This method is now deprecated and should not be called directly.
-        // Use completeStep or skipStep on AuthenticationFlowManager instead.
         $this->getLogger()->warning("completeAuthenticationStep is deprecated. Use AuthenticationFlowManager::completeStep or skipStep.");
-        $this->authenticationFlowManager->completeStep($player, $completedStepId); // Default to complete
+        $this->authenticationFlowManager->completeStep($player, $completedStepId);
     }
 
     /**

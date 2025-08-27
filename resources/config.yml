@@ -81,15 +81,26 @@ forms:
 
 # Database configuration
 database:
-  # Available providers: yaml, json, sqlite, mysql
-  # sqlite is recommended for all servers. yaml is not suitable for production due to performance and data corruption risks.
-  provider: sqlite
+  # Available types: sqlite, mysql
+  # sqlite is suitable for most servers. mysql is recommended for large-scale production environments.
+  type: sqlite
+  sqlite:
+    file: "data.sqlite" # Path to the SQLite database file
   mysql:
     host: 127.0.0.1
     port: 3306
     user: root
     password: ""
-    database: xauth
+    schema: xauth
+    socket: "" # Optional: Path to the MySQL socket file (e.g., /var/run/mysqld/mysqld.sock)
+    ssl: # Optional: SSL/TLS connection settings
+      enabled: false # Set to true to enable SSL/TLS
+      key: "" # Path to the client private key file
+      certificate: "" # Path to the client certificate file
+      ca-certificate: "" # Path to the CA certificate file
+      ca-path: "" # Path to a directory containing trusted CA certificates
+      cipher-algorithms: "" # List of allowable ciphers (e.g., DHE-RSA-AES256-SHA)
+  log_queries: false # Set to true to log all database queries at DEBUG level (useful for debugging)
 
 # Enable or disable data migration.
 # If true, XAuth will attempt to migrate data from older formats (e.g., players.yml)

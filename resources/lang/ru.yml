@@ -98,6 +98,8 @@ messages:
   xauth_migration_complete: "§aМиграция завершена!"
   xauth_migration_migrated_count: "§a- Мигрировано: {count} игроков"
   xauth_migration_skipped_count: "§e- Пропущено (уже существуют): {count} игроков"
+  xauth_migration_progress: "§aМигрировано: {migrated}/{total} (Пропущено: {skipped})"
+  xauth_migration_in_progress: "§cМиграция уже выполняется. Пожалуйста, дождитесь её завершения."
   xauth_migration_error_prefix: "§cОшибка: "
   xauth_migration_unexpected_error_prefix: "§cПроизошла непредвиденная ошибка во время миграции: "
   set_password_success: "§aПароль игрока успешно установлен."

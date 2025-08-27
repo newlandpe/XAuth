@@ -98,6 +98,8 @@ messages:
   xauth_migration_complete: "§aMigration complete!"
   xauth_migration_migrated_count: "§a- Migrated: {count} players"
   xauth_migration_skipped_count: "§e- Skipped (already exist): {count} players"
+  xauth_migration_progress: "§aMigrated: {migrated}/{total} (Skipped: {skipped})"
+  xauth_migration_in_progress: "§cMigration is already in progress. Please wait for it to complete."
   xauth_migration_error_prefix: "§cError: "
   xauth_migration_unexpected_error_prefix: "§cAn unexpected error occurred during migration: "
   set_password_success: "§aPlayer password has been set successfully."

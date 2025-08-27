@@ -1,5 +1,28 @@
 <?php
 
+/*
+ *
+ * __  __    _         _   _
+ * \ \/ /   / \  _   _| |_| |__
+ *  \  /   / _ \| | | | __| '_ \
+ *  /  \  / ___ \ |_| | |_| | | |
+ * /_/\_\/_/   \_\__,_|\__|_| |_|
+ *
+ * This program is free software: you can redistribute and/or modify
+ * it under the terms of the CSSM Unlimited License v2.0.
+ *
+ * This license permits unlimited use, modification, and distribution
+ * for any purpose while maintaining authorship attribution.
+ *
+ * The software is provided "as is" without warranty of any kind.
+ *
+ * @author LuthMC
+ * @author Sergiy Chernega
+ * @link https://chernega.eu.org/
+ *
+ *
+ */
+
 declare(strict_types=1);
 
 namespace Luthfi\XAuth\service;
@@ -17,6 +40,7 @@ use Luthfi\XAuth\exception\UnregistrationNotInitiatedException;
 use Luthfi\XAuth\Main;
 use pocketmine\player\Player;
 use pocketmine\command\utils\InvalidCommandSyntaxException;
+use SOFe\AwaitGenerator\Await;
 
 class RegistrationService {
 
@@ -37,39 +61,41 @@ class RegistrationService {
      * @throws PasswordMismatchException
      * @throws InvalidCommandSyntaxException
      */
-    public function handleRegistrationRequest(Player $player, string $password, string $confirmPassword): void {
-        if ($this->plugin->getAuthenticationService()->isPlayerAuthenticated($player)) {
-            throw new AlreadyLoggedInException();
-        }
+    public function handleRegistrationRequest(Player $player, string $password, string $confirmPassword): \Generator {
+        return Await::f2c(function () use ($player, $password, $confirmPassword) {
+            if ($this->plugin->getAuthenticationService()->isPlayerAuthenticated($player)) {
+                throw new AlreadyLoggedInException();
+            }
 
-        if ($this->plugin->getDataProvider()->isPlayerRegistered($player->getName())) {
-            throw new AlreadyRegisteredException();
-        }
+            if (yield from $this->plugin->getDataProvider()->isPlayerRegistered($player->getName())) {
+                throw new AlreadyRegisteredException();
+            }
 
-        if ($this->plugin->getDataProvider()->isPlayerLocked($player->getName())) {
-            throw new AccountLockedException();
-        }
+            if (yield from $this->plugin->getDataProvider()->isPlayerLocked($player->getName())) {
+                throw new AccountLockedException();
+            }
 
-        $ipAddress = $player->getNetworkSession()->getIp();
-        $maxRegistrations = (int)($this->plugin->getConfig()->getNested("registration.max_per_ip") ?? 0);
-        if ($maxRegistrations > 0 && $this->plugin->getDataProvider()->getRegistrationCountByIp($ipAddress) >= $maxRegistrations) {
-            throw new RegistrationRateLimitException();
-        }
+            $ipAddress = $player->getNetworkSession()->getIp();
+            $maxRegistrations = (int)($this->plugin->getConfig()->getNested("registration.max_per_ip") ?? 0);
+            if ($maxRegistrations > 0 && (yield from $this->plugin->getDataProvider()->getRegistrationCountByIp($ipAddress)) >= $maxRegistrations) {
+                throw new RegistrationRateLimitException();
+            }
 
-        if (($message = $this->plugin->getPasswordValidator()->validatePassword($password)) !== null) {
-            throw new InvalidCommandSyntaxException($message);
-        }
+            if (($message = $this->plugin->getPasswordValidator()->validatePassword($password)) !== null) {
+                throw new InvalidCommandSyntaxException($message);
+            }
 
-        if ($password !== $confirmPassword) {
-            throw new PasswordMismatchException();
-        }
+            if ($password !== $confirmPassword) {
+                throw new PasswordMismatchException();
+            }
 
-        $this->plugin->cancelKickTask($player);
-        $hashedPassword = $this->plugin->getPasswordHasher()->hashPassword($password);
-        $this->plugin->getDataProvider()->registerPlayer($player, $hashedPassword);
+            $this->plugin->cancelKickTask($player);
+            $hashedPassword = $this->plugin->getPasswordHasher()->hashPassword($password);
+            yield from $this->plugin->getDataProvider()->registerPlayer($player, $hashedPassword);
 
-        (new PlayerRegisterEvent($player))->call();
-        $this->plugin->getAuthenticationFlowManager()->completeStep($player, 'xauth_register');
+            (new PlayerRegisterEvent($player))->call();
+            $this->plugin->getAuthenticationFlowManager()->completeStep($player, 'xauth_register');
+        });
     }
 
     
@@ -83,45 +109,49 @@ class RegistrationService {
      * @throws ConfirmationExpiredException
      * @throws IncorrectPasswordException
      */
-    public function confirmUnregistration(Player $player, string $password): void {
-        $lowerName = strtolower($player->getName());
+    public function confirmUnregistration(Player $player, string $password): \Generator {
+        return Await::f2c(function () use ($player, $password) {
+            $lowerName = strtolower($player->getName());
 
-        if (!isset($this->confirmations[$lowerName])) {
-            throw new UnregistrationNotInitiatedException();
-        }
+            if (!isset($this->confirmations[$lowerName])) {
+                throw new UnregistrationNotInitiatedException();
+            }
 
-        if (time() - $this->confirmations[$lowerName] > 60) {
+            if (time() - $this->confirmations[$lowerName] > 60) {
+                unset($this->confirmations[$lowerName]);
+                throw new ConfirmationExpiredException();
+            }
+
+            $playerData = yield from $this->plugin->getDataProvider()->getPlayer($player);
+
+            if ($playerData === null || !$this->plugin->getPasswordHasher()->verifyPassword($password, (string)($playerData['password'] ?? ''))) {
+                throw new IncorrectPasswordException();
+            }
+
             unset($this->confirmations[$lowerName]);
-            throw new ConfirmationExpiredException();
-        }
+            yield from $this->plugin->getDataProvider()->unregisterPlayer($player->getName());
+            (new PlayerUnregisterEvent($player))->call();
 
-        $playerData = $this->plugin->getDataProvider()->getPlayer($player);
-
-        if ($playerData === null || !$this->plugin->getPasswordHasher()->verifyPassword($password, (string)($playerData['password'] ?? ''))) {
-            throw new IncorrectPasswordException();
-        }
-
-        unset($this->confirmations[$lowerName]);
-        $this->plugin->getDataProvider()->unregisterPlayer($player->getName());
-        (new PlayerUnregisterEvent($player))->call();
-
-        $kickMessage = (string)($this->plugin->getCustomMessages()->get("messages.unregister_success_kick") ?? "§aYour account has been successfully unregistered.");
-        $player->kick($kickMessage);
+            $kickMessage = (string)($this->plugin->getCustomMessages()->get("messages.unregister_success_kick") ?? "§aYour account has been successfully unregistered.");
+            $player->kick($kickMessage);
+        });
     }
 
-    public function unregisterPlayerByAdmin(string $playerName): void {
-        if (!$this->plugin->getDataProvider()->isPlayerRegistered($playerName)) {
-            throw new NotRegisteredException();
-        }
+    public function unregisterPlayerByAdmin(string $playerName): \Generator {
+        return Await::f2c(function () use ($playerName) {
+            if (!(yield from $this->plugin->getDataProvider()->isPlayerRegistered($playerName))) {
+                throw new NotRegisteredException();
+            }
 
-        $offlinePlayer = $this->plugin->getServer()->getOfflinePlayer($playerName);
-        $this->plugin->getDataProvider()->unregisterPlayer($playerName);
-        (new PlayerUnregisterEvent($offlinePlayer))->call();
+            $offlinePlayer = $this->plugin->getServer()->getOfflinePlayer($playerName);
+            yield from $this->plugin->getDataProvider()->unregisterPlayer($playerName);
+            (new PlayerUnregisterEvent($offlinePlayer))->call();
 
-        $player = $this->plugin->getServer()->getPlayerExact($playerName);
-        if ($player !== null) {
-            $this->plugin->getAuthenticationService()->handleLogout($player);
-            $player->sendMessage((string)(($this->plugin->getCustomMessages()->get("messages"))["account_unregistered_by_admin"] ?? "§eYour account has been unregistered by an administrator. Please register again."));
-        }
+            $player = $this->plugin->getServer()->getPlayerExact($playerName);
+            if ($player !== null) {
+                yield from $this->plugin->getAuthenticationService()->handleLogout($player);
+                $player->sendMessage((string)(($this->plugin->getCustomMessages()->get("messages"))["account_unregistered_by_admin"] ?? "§eYour account has been unregistered by an administrator. Please register again."));
+            }
+        });
     }
 }
