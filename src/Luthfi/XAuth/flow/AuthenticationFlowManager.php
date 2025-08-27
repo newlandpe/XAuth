@@ -97,7 +97,7 @@ class AuthenticationFlowManager {
             $playerData = $this->plugin->getDataProvider()->getPlayer($player);
             $this->plugin->getPlayerStateService()->protectPlayer($player);
             $this->plugin->scheduleKickTask($player);
-            $formsEnabled = (bool)($this->plugin->getConfig()->getNested("forms.enabled") ?? true);
+            $formsEnabled = $this->plugin->getConfig()->getNested("forms.enabled", true);
             if ($playerData !== null) {
                 $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["login_prompt"] ?? "");
                 $player->sendMessage($message);

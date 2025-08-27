@@ -31,6 +31,7 @@ use Luthfi\XAuth\event\PlayerAuthenticateEvent;
 use Luthfi\XAuth\flow\AuthenticationContext;
 use Luthfi\XAuth\Main;
 use pocketmine\player\Player;
+use SOFe\AwaitGenerator\Await;
 
 class XAuthLoginStep implements AuthenticationStep, FinalizableStep {
 
@@ -45,26 +46,28 @@ class XAuthLoginStep implements AuthenticationStep, FinalizableStep {
     }
 
     public function start(Player $player): void {
-        if ($this->plugin->getAuthenticationService()->isPlayerAuthenticated($player)) {
-            $this->skip($player);
-            return;
-        }
-
-        $playerData = $this->plugin->getDataProvider()->getPlayer($player);
-        if ($playerData !== null) {
-            $this->plugin->getPlayerStateService()->protectPlayer($player);
-            $this->plugin->scheduleKickTask($player);
-            $formsEnabled = (bool)($this->plugin->getConfig()->getNested("forms.enabled") ?? true);
-            $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["login_prompt"] ?? "");
-            $player->sendMessage($message);
-            if ($formsEnabled) {
-                $this->plugin->getFormManager()->sendLoginForm($player);
-            } else {
-                $this->plugin->sendTitleMessage($player, "login_prompt");
+        Await::f2c(function () use ($player) {
+            if ($this->plugin->getAuthenticationService()->isPlayerAuthenticated($player)) {
+                $this->skip($player);
+                return;
             }
-        } else {
-            $this->skip($player); 
-        }
+
+            $playerData = yield $this->plugin->getDataProvider()->getPlayer($player);
+            if ($playerData !== null) {
+                $this->plugin->getPlayerStateService()->protectPlayer($player);
+                $this->plugin->scheduleKickTask($player);
+                $formsEnabled = $this->plugin->getConfig()->getNested("forms.enabled", true);
+                $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["login_prompt"] ?? "");
+                $player->sendMessage($message);
+                if ($formsEnabled) {
+                    $this->plugin->getFormManager()->sendLoginForm($player);
+                } else {
+                    $this->plugin->sendTitleMessage($player, "login_prompt");
+                }
+            } else {
+                $this->skip($player); 
+            }
+        });
     }
 
     public function complete(Player $player): void {

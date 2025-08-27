@@ -31,6 +31,7 @@ use Luthfi\XAuth\event\PlayerRegisterEvent;
 use Luthfi\XAuth\flow\AuthenticationContext;
 use Luthfi\XAuth\Main;
 use pocketmine\player\Player;
+use SOFe\AwaitGenerator\Await;
 
 class XAuthRegisterStep implements AuthenticationStep {
 
@@ -45,26 +46,28 @@ class XAuthRegisterStep implements AuthenticationStep {
     }
 
     public function start(Player $player): void {
-        if ($this->plugin->getAuthenticationService()->isPlayerAuthenticated($player)) {
-            $this->skip($player);
-            return;
-        }
-
-        $playerData = $this->plugin->getDataProvider()->getPlayer($player);
-        if ($playerData === null) {
-            $this->plugin->getPlayerStateService()->protectPlayer($player);
-            $this->plugin->scheduleKickTask($player);
-            $formsEnabled = (bool)($this->plugin->getConfig()->getNested("forms.enabled") ?? true);
-            $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["register_prompt"] ?? "");
-            $player->sendMessage($message);
-            if ($formsEnabled) {
-                $this->plugin->getFormManager()->sendRegisterForm($player);
-            } else {
-                $this->plugin->sendTitleMessage($player, "register_prompt");
+        Await::f2c(function () use ($player) {
+            if ($this->plugin->getAuthenticationService()->isPlayerAuthenticated($player)) {
+                $this->skip($player);
+                return;
             }
-        } else {
-            $this->skip($player);
-        }
+
+            $playerData = yield $this->plugin->getDataProvider()->getPlayer($player);
+            if ($playerData === null) {
+                $this->plugin->getPlayerStateService()->protectPlayer($player);
+                $this->plugin->scheduleKickTask($player);
+                $formsEnabled = $this->plugin->getConfig()->getNested("forms.enabled", true);
+                $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["register_prompt"] ?? "");
+                $player->sendMessage($message);
+                if ($formsEnabled) {
+                    $this->plugin->getFormManager()->sendRegisterForm($player);
+                } else {
+                    $this->plugin->sendTitleMessage($player, "register_prompt");
+                }
+            } else {
+                $this->skip($player);
+            }
+        });
     }
 
     public function complete(Player $player): void {
