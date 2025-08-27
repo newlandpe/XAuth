@@ -109,7 +109,7 @@ class PlayerSessionListener implements Listener {
         $authenticationService = $this->plugin->getAuthenticationService();
 
         Await::f2c(function () use ($player, $authenticationService) {
-            if (yield from $authenticationService->isPlayerAuthenticated($player)) {
+            if ($authenticationService->isPlayerAuthenticated($player)) {
                 return;
             }
 
@@ -153,7 +153,7 @@ class PlayerSessionListener implements Listener {
                 $player = $this->plugin->getServer()->getPlayerExact($playerName);
 
                 Await::f2c(function () use ($player, &$modifiedEntries, &$hasChanges, $entry) {
-                    if ($player === null || !(yield from $this->plugin->getAuthenticationService()->isPlayerAuthenticated($player))) {
+                    if ($player === null || !$this->plugin->getAuthenticationService()->isPlayerAuthenticated($player)) {
                         $hasChanges = true;
                         return;
                     }
