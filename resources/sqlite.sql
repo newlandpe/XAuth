@@ -1,5 +1,5 @@
 -- #!sqlite
--- # { xauth.players.init
+-- # { xauth.init
 CREATE TABLE IF NOT EXISTS players (
     name TEXT PRIMARY KEY,
     password TEXT,
@@ -11,9 +11,6 @@ CREATE TABLE IF NOT EXISTS players (
     blocked_until INTEGER DEFAULT 0,
     must_change_password INTEGER DEFAULT 0
 );
--- # }
-
--- # { xauth.sessions.init
 CREATE TABLE IF NOT EXISTS sessions (
     session_id TEXT PRIMARY KEY,
     player_name TEXT NOT NULL,
