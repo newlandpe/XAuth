@@ -41,7 +41,7 @@ class DataProviderFactory {
 
         return Await::f2c(function () use ($plugin, $providerType) {
             $provider = self::createProvider($plugin, $providerType);
-            yield $provider->initialize();
+            yield from $provider->initialize();
             return $provider;
         });
     }

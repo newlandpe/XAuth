@@ -52,7 +52,7 @@ class XAuthLoginStep implements AuthenticationStep, FinalizableStep {
                 return;
             }
 
-            $playerData = yield $this->plugin->getDataProvider()->getPlayer($player);
+            $playerData = yield from $this->plugin->getDataProvider()->getPlayer($player);
             if ($playerData !== null) {
                 $this->plugin->getPlayerStateService()->protectPlayer($player);
                 $this->plugin->scheduleKickTask($player);

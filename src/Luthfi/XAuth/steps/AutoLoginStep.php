@@ -51,7 +51,7 @@ class AutoLoginStep implements AuthenticationStep, FinalizableStep {
 
         if ((bool)($autoLoginConfig["enabled"] ?? false)) {
             Await::f2c(function() use ($player, $playerName, $autoLoginConfig) {
-                $sessions = yield $this->plugin->getDataProvider()->getSessionsByPlayer($playerName);
+                $sessions = yield from $this->plugin->getDataProvider()->getSessionsByPlayer($playerName);
                 $ip = $player->getNetworkSession()->getIp();
                 $securityLevel = (int)($autoLoginConfig["security_level"] ?? 1);
 

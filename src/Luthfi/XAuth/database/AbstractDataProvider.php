@@ -58,13 +58,13 @@ abstract class AbstractDataProvider implements DataProviderInterface {
     public function initialize(): Await {
         return Await::f2c(function () {
             try {
-                yield $this->connector->asyncGeneric('xauth.init');
+                yield from $this->connector->asyncGeneric('xauth.init');
                 $this->plugin->getLogger()->debug("Database tables initialized.");
             } catch (SqlError $error) {
                 $this->plugin->getLogger()->error("Failed to initialize database tables: " . $error->getMessage());
                 throw $error;
             }
-            yield $this->init();
+            yield from $this->init();
         });
     }
 
@@ -76,7 +76,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
         $name = strtolower($player->getName());
         return Await::f2c(function () use ($name) {
             try {
-                $rows = yield $this->connector->asyncSelect('xauth.players.get', ['name' => $name]);
+                $rows = yield from $this->connector->asyncSelect('xauth.players.get', ['name' => $name]);
                 return count($rows) > 0 ? $rows[0] : null;
             } catch (SqlError $error) {
                 $this->plugin->getLogger()->error("Failed to get player data for {$name}: " . $error->getMessage());
@@ -89,7 +89,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
         $name = strtolower($playerName);
         return Await::f2c(function () use ($name) {
             try {
-                $rows = yield $this->connector->asyncSelect('xauth.players.is_registered', ['name' => $name]);
+                $rows = yield from $this->connector->asyncSelect('xauth.players.is_registered', ['name' => $name]);
                 return count($rows) > 0;
             } catch (SqlError $error) {
                 $this->plugin->getLogger()->error("Failed to check if player {$name} is registered: " . $error->getMessage());
@@ -103,7 +103,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
         $ip = $player->getNetworkSession()->getIp();
         return Await::f2c(function () use ($name, $hashedPassword, $ip) {
             try {
-                yield $this->connector->asyncInsert('xauth.players.register', [
+                yield from $this->connector->asyncInsert('xauth.players.register', [
                     'name' => $name,
                     'password' => $hashedPassword,
                     'ip' => $ip,
@@ -123,7 +123,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
         $ip = $player->getNetworkSession()->getIp();
         return Await::f2c(function () use ($name, $ip) {
             try {
-                yield $this->connector->asyncChange('xauth.players.update_ip', [
+                yield from $this->connector->asyncChange('xauth.players.update_ip', [
                     'name' => $name,
                     'ip' => $ip,
                     'last_login_at' => time()
@@ -139,7 +139,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
         $name = strtolower($player->getName());
         return Await::f2c(function () use ($name, $newHashedPassword) {
             try {
-                yield $this->connector->asyncChange('xauth.players.change_password', [
+                yield from $this->connector->asyncChange('xauth.players.change_password', [
                     'name' => $name,
                     'password' => $newHashedPassword
                 ]);
@@ -154,7 +154,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
         $name = strtolower($playerName);
         return Await::f2c(function () use ($name) {
             try {
-                yield $this->connector->asyncChange('xauth.players.unregister', [
+                yield from $this->connector->asyncChange('xauth.players.unregister', [
                     'name' => $name
                 ]);
                 $this->plugin->getLogger()->debug("Player {$name} unregistered successfully.");
@@ -168,7 +168,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
         $name = strtolower($playerName);
         return Await::f2c(function () use ($name, $locked) {
             try {
-                yield $this->connector->asyncChange('xauth.players.set_locked', [
+                yield from $this->connector->asyncChange('xauth.players.set_locked', [
                     'name' => $name,
                     'locked' => (int)$locked
                 ]);
@@ -183,7 +183,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
         $name = strtolower($playerName);
         return Await::f2c(function () use ($name) {
             try {
-                $rows = yield $this->connector->asyncSelect('xauth.players.is_locked', ['name' => $name]);
+                $rows = yield from $this->connector->asyncSelect('xauth.players.is_locked', ['name' => $name]);
                 return count($rows) > 0 ? (bool)($rows[0]['locked'] ?? false) : false;
             } catch (SqlError $error) {
                 $this->plugin->getLogger()->error("Failed to get player {$name} locked status: " . $error->getMessage());
@@ -196,7 +196,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
         $name = strtolower($playerName);
         return Await::f2c(function () use ($name, $timestamp) {
             try {
-                yield $this->connector->asyncChange('xauth.players.set_blocked_until', [
+                yield from $this->connector->asyncChange('xauth.players.set_blocked_until', [
                     'name' => $name,
                     'timestamp' => $timestamp
                 ]);
@@ -211,7 +211,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
         $name = strtolower($playerName);
         return Await::f2c(function () use ($name) {
             try {
-                $rows = yield $this->connector->asyncSelect('xauth.players.get_blocked_until', ['name' => $name]);
+                $rows = yield from $this->connector->asyncSelect('xauth.players.get_blocked_until', ['name' => $name]);
                 return count($rows) > 0 ? (int)($rows[0]['blocked_until'] ?? 0) : 0;
             } catch (SqlError $error) {
                 $this->plugin->getLogger()->error("Failed to get player {$name} blocked until: " . $error->getMessage());
@@ -224,7 +224,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
         $name = strtolower($playerName);
         return Await::f2c(function () use ($name, $required) {
             try {
-                yield $this->connector->asyncChange('xauth.players.set_must_change_password', [
+                yield from $this->connector->asyncChange('xauth.players.set_must_change_password', [
                     'name' => $name,
                     'required' => (int)$required
                 ]);
@@ -239,7 +239,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
         $name = strtolower($playerName);
         return Await::f2c(function () use ($name) {
             try {
-                $rows = yield $this->connector->asyncSelect('xauth.players.must_change_password', ['name' => $name]);
+                $rows = yield from $this->connector->asyncSelect('xauth.players.must_change_password', ['name' => $name]);
                 return count($rows) > 0 ? (bool)($rows[0]['must_change_password'] ?? false) : false;
             } catch (SqlError $error) {
                 $this->plugin->getLogger()->error("Failed to get player {$name} must change password status: " . $error->getMessage());
@@ -251,7 +251,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
     public function getAllPlayerData(): Await {
         return Await::f2c(function () {
             try {
-                $rows = yield $this->connector->asyncSelect('xauth.players.get_all_data');
+                $rows = yield from $this->connector->asyncSelect('xauth.players.get_all_data');
                 $data = [];
                 foreach ($rows as $row) {
                     $data[strtolower($row['name'])] = $row;
@@ -268,7 +268,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
         $name = strtolower($playerName);
         return Await::f2c(function () use ($name, $data) {
             try {
-                yield $this->connector->asyncInsert('xauth.players.register_raw', [
+                yield from $this->connector->asyncInsert('xauth.players.register_raw', [
                     'name' => $name,
                     'password' => $data['password'],
                     'ip' => $data['ip'],
@@ -293,7 +293,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
 
         return Await::f2c(function () use ($sessionId, $playerName, $ipAddress, $deviceId, $loginTime, $expirationTime) {
             try {
-                yield $this->connector->asyncInsert('xauth.sessions.create', [
+                yield from $this->connector->asyncInsert('xauth.sessions.create', [
                     'session_id' => $sessionId,
                     'player_name' => strtolower($playerName),
                     'ip_address' => $ipAddress,
@@ -314,7 +314,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
     public function getSession(string $sessionId): Await {
         return Await::f2c(function () use ($sessionId) {
             try {
-                $rows = yield $this->connector->asyncSelect('xauth.sessions.get', [
+                $rows = yield from $this->connector->asyncSelect('xauth.sessions.get', [
                     'session_id' => $sessionId,
                     'current_time' => time()
                 ]);
@@ -330,7 +330,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
         $name = strtolower($playerName);
         return Await::f2c(function () use ($name) {
             try {
-                $rows = yield $this->connector->asyncSelect('xauth.sessions.get_by_player', [
+                $rows = yield from $this->connector->asyncSelect('xauth.sessions.get_by_player', [
                     'player_name' => $name,
                     'current_time' => time()
                 ]);
@@ -349,7 +349,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
     public function deleteSession(string $sessionId): Await {
         return Await::f2c(function () use ($sessionId) {
             try {
-                yield $this->connector->asyncChange('xauth.sessions.delete', [
+                yield from $this->connector->asyncChange('xauth.sessions.delete', [
                     'session_id' => $sessionId
                 ]);
                 $this->plugin->getLogger()->debug("Session {$sessionId} deleted.");
@@ -363,7 +363,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
         $name = strtolower($playerName);
         return Await::f2c(function () use ($name) {
             try {
-                yield $this->connector->asyncChange('xauth.sessions.delete_all_for_player', [
+                yield from $this->connector->asyncChange('xauth.sessions.delete_all_for_player', [
                     'player_name' => $name
                 ]);
                 $this->plugin->getLogger()->debug("All sessions deleted for player {$name}.");
@@ -376,7 +376,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
     public function updateSessionLastActivity(string $sessionId): Await {
         return Await::f2c(function () use ($sessionId) {
             try {
-                yield $this->connector->asyncChange('xauth.sessions.update_last_activity', [
+                yield from $this->connector->asyncChange('xauth.sessions.update_last_activity', [
                     'session_id' => $sessionId,
                     'current_time' => time()
                 ]);
@@ -390,7 +390,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
     public function refreshSession(string $sessionId, int $newLifetimeSeconds): Await {
         return Await::f2c(function () use ($sessionId, $newLifetimeSeconds) {
             try {
-                yield $this->connector->asyncChange('xauth.sessions.refresh', [
+                yield from $this->connector->asyncChange('xauth.sessions.refresh', [
                     'session_id' => $sessionId,
                     'expiration_time' => time() + $newLifetimeSeconds
                 ]);
@@ -404,7 +404,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
     public function cleanupExpiredSessions(): Await {
         return Await::f2c(function () {
             try {
-                yield $this->connector->asyncChange('xauth.sessions.cleanup_expired', [
+                yield from $this->connector->asyncChange('xauth.sessions.cleanup_expired', [
                     'current_time' => time()
                 ]);
                 $this->plugin->getLogger()->debug("Expired sessions cleaned up.");
@@ -417,7 +417,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
     public function getRegistrationCountByIp(string $ipAddress): Await {
         return Await::f2c(function () use ($ipAddress) {
             try {
-                $rows = yield $this->connector->asyncSelect('xauth.players.get_registration_count_by_ip', [
+                $rows = yield from $this->connector->asyncSelect('xauth.players.get_registration_count_by_ip', [
                     'ip' => $ipAddress
                 ]);
                 return count($rows) > 0 ? (int)($rows[0]['count'] ?? 0) : 0;

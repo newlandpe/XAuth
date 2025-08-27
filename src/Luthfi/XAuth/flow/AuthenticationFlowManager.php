@@ -96,7 +96,7 @@ class AuthenticationFlowManager {
             Await::f2c(function() use ($player, $playerName) {
                 $this->plugin->getLogger()->debug("No authentication flow order defined. Player '{$playerName}' will proceed with default XAuth flow.");
                 // Trigger XAuth's default login/register prompt here if needed
-                $playerData = yield $this->plugin->getDataProvider()->getPlayer($player);
+                $playerData = yield from $this->plugin->getDataProvider()->getPlayer($player);
                 $this->plugin->scheduleKickTask($player);
                 $formsEnabled = $this->plugin->getConfig()->getNested("forms.enabled", true);
                 if ($playerData !== null) {
