@@ -61,7 +61,7 @@ class RegistrationService {
      * @throws PasswordMismatchException
      * @throws InvalidCommandSyntaxException
      */
-    public function handleRegistrationRequest(Player $player, string $password, string $confirmPassword): \Generator {
+    public function handleRegistrationRequest(Player $player, string $password, string $confirmPassword): Await {
         return Await::f2c(function () use ($player, $password, $confirmPassword) {
             if ($this->plugin->getAuthenticationService()->isPlayerAuthenticated($player)) {
                 throw new AlreadyLoggedInException();
@@ -109,7 +109,7 @@ class RegistrationService {
      * @throws ConfirmationExpiredException
      * @throws IncorrectPasswordException
      */
-    public function confirmUnregistration(Player $player, string $password): \Generator {
+    public function confirmUnregistration(Player $player, string $password): Await {
         return Await::f2c(function () use ($player, $password) {
             $lowerName = strtolower($player->getName());
 
@@ -137,7 +137,7 @@ class RegistrationService {
         });
     }
 
-    public function unregisterPlayerByAdmin(string $playerName): \Generator {
+    public function unregisterPlayerByAdmin(string $playerName): Await {
         return Await::f2c(function () use ($playerName) {
             if (!(yield from $this->plugin->getDataProvider()->isPlayerRegistered($playerName))) {
                 throw new NotRegisteredException();

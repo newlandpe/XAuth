@@ -42,6 +42,7 @@ use Luthfi\XAuth\Main;
 use pocketmine\player\Player;
 use pocketmine\Server;
 use pocketmine\utils\InvalidCommandSyntaxException;
+use SOFe\AwaitGenerator\Await;
 
 class AuthenticationService {
 
@@ -92,7 +93,7 @@ class AuthenticationService {
         return array_keys($this->authenticatedPlayers);
     }
 
-    public function incrementLoginAttempts(Player $player): \Generator {
+    public function incrementLoginAttempts(Player $player): Await {
         return Await::f2c(function () use ($player) {
             $name = strtolower($player->getName());
             if (!isset($this->loginAttempts[$name])) {
@@ -111,7 +112,7 @@ class AuthenticationService {
         });
     }
 
-    public function isPlayerBlocked(Player $player, int $maxAttempts, int $blockTimeMinutes): \Generator {
+    public function isPlayerBlocked(Player $player, int $maxAttempts, int $blockTimeMinutes): Await {
         return Await::f2c(function () use ($player, $maxAttempts) {
             $blockedUntil = yield from $this->plugin->getDataProvider()->getBlockedUntil($player->getName());
             if ($blockedUntil > time()) {
@@ -123,7 +124,7 @@ class AuthenticationService {
         });
     }
 
-    public function getRemainingBlockTime(Player $player, int $blockTimeMinutes): \Generator {
+    public function getRemainingBlockTime(Player $player, int $blockTimeMinutes): Await {
         return Await::f2c(function () use ($player, $blockTimeMinutes) {
             $blockedUntil = yield from $this->plugin->getDataProvider()->getBlockedUntil($player->getName());
             if ($blockedUntil > time()) {
@@ -137,14 +138,14 @@ class AuthenticationService {
         unset($this->loginAttempts[strtolower($player->getName())]);
     }
 
-    public function isPlayerBlockedByName(string $name, int $maxAttempts, int $blockTimeMinutes): \Generator {
+    public function isPlayerBlockedByName(string $name, int $maxAttempts, int $blockTimeMinutes): Await {
         return Await::f2c(function () use ($name) {
             $blockedUntil = yield from $this->plugin->getDataProvider()->getBlockedUntil($name);
             return $blockedUntil > time();
         });
     }
 
-    public function getRemainingBlockTimeByName(string $name, int $blockTimeMinutes): \Generator {
+    public function getRemainingBlockTimeByName(string $name, int $blockTimeMinutes): Await {
         return Await::f2c(function () use ($name, $blockTimeMinutes) {
             $blockedUntil = yield from $this->plugin->getDataProvider()->getBlockedUntil($name);
             if ($blockedUntil > time()) {
@@ -154,7 +155,7 @@ class AuthenticationService {
         });
     }
 
-    public function handleLoginRequest(Player $player, string $password): \Generator {
+    public function handleLoginRequest(Player $player, string $password): Await {
         return Await::f2c(function () use ($player, $password) {
             if ($this->isPlayerAuthenticated($player)) {
                 throw new AlreadyLoggedInException();
@@ -206,7 +207,7 @@ class AuthenticationService {
         });
     }
 
-    public function handleChangePasswordRequest(Player $player, string $oldPassword, string $newPassword, string $confirmNewPassword): \Generator {
+    public function handleChangePasswordRequest(Player $player, string $oldPassword, string $newPassword, string $confirmNewPassword): Await {
         return Await::f2c(function () use ($player, $oldPassword, $newPassword, $confirmNewPassword) {
             $playerData = yield from $this->plugin->getDataProvider()->getPlayer($player);
             if ($playerData === null) {
@@ -240,7 +241,7 @@ class AuthenticationService {
         });
     }
 
-    public function handleForceChangePasswordRequest(Player $player, string $newPassword, string $confirmNewPassword): \Generator {
+    public function handleForceChangePasswordRequest(Player $player, string $newPassword, string $confirmNewPassword): Await {
         return Await::f2c(function () use ($player, $newPassword, $confirmNewPassword) {
             if (($message = $this->plugin->getPasswordValidator()->validatePassword($newPassword)) !== null) {
                 throw new InvalidCommandSyntaxException($message);
@@ -260,7 +261,7 @@ class AuthenticationService {
         });
     }
 
-    public function handleLogout(Player $player): \Generator {
+    public function handleLogout(Player $player): Await {
         return Await::f2c(function () use ($player) {
             $this->plugin->cancelKickTask($player);
             $this->plugin->clearTitleTask($player);
@@ -319,7 +320,7 @@ class AuthenticationService {
         return isset($this->forcePasswordChange[strtolower($player->getName())]);
     }
 
-    public function forcePasswordChangeByAdmin(string $playerName): \Generator {
+    public function forcePasswordChangeByAdmin(string $playerName): Await {
         return Await::f2c(function () use ($playerName) {
             if (!(yield from $this->plugin->getDataProvider()->isPlayerRegistered($playerName))) {
                 throw new NotRegisteredException();
@@ -336,7 +337,7 @@ class AuthenticationService {
         });
     }
 
-    public function lockAccount(string $playerName): \Generator {
+    public function lockAccount(string $playerName): Await {
         return Await::f2c(function () use ($playerName) {
             if (!(yield from $this->plugin->getDataProvider()->isPlayerRegistered($playerName))) {
                 throw new NotRegisteredException();
@@ -345,7 +346,7 @@ class AuthenticationService {
         });
     }
 
-    public function unlockAccount(string $playerName): \Generator {
+    public function unlockAccount(string $playerName): Await {
         return Await::f2c(function () use ($playerName) {
             if (!(yield from $this->plugin->getDataProvider()->isPlayerRegistered($playerName))) {
                 throw new NotRegisteredException();
@@ -354,7 +355,7 @@ class AuthenticationService {
         });
     }
 
-    public function setPlayerPassword(string $playerName, string $newPassword): \Generator {
+    public function setPlayerPassword(string $playerName, string $newPassword): Await {
         return Await::f2c(function () use ($playerName, $newPassword) {
             if (!(yield from $this->plugin->getDataProvider()->isPlayerRegistered($playerName))) {
                 throw new NotRegisteredException();
@@ -371,7 +372,7 @@ class AuthenticationService {
         });
     }
 
-    public function checkPlayerPassword(string $playerName, string $password): \Generator {
+    public function checkPlayerPassword(string $playerName, string $password): Await {
         return Await::f2c(function () use ($playerName, $password) {
             $playerData = yield from $this->plugin->getDataProvider()->getPlayer(Server::getInstance()->getOfflinePlayer($playerName));
             if ($playerData === null) {
@@ -383,7 +384,7 @@ class AuthenticationService {
         });
     }
 
-    public function getPlayerLookupData(string $playerName): \Generator {
+    public function getPlayerLookupData(string $playerName): Await {
         return Await::f2c(function () use ($playerName) {
             $offlinePlayer = Server::getInstance()->getOfflinePlayer($playerName);
             $playerData = yield from $this->plugin->getDataProvider()->getPlayer($offlinePlayer);

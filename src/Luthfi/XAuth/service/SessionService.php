@@ -39,7 +39,7 @@ class SessionService {
         $this->plugin = $plugin;
     }
 
-    public function handleSession(Player $player): \Generator {
+    public function handleSession(Player $player): Await {
         return Await::f2c(function () use ($player) {
             $dataProvider = $this->plugin->getDataProvider();
             if ($dataProvider === null) return; // No yield from here, as it's a check
@@ -92,13 +92,13 @@ class SessionService {
         });
     }
 
-    public function getSessionsForPlayer(string $playerName): \Generator {
+    public function getSessionsForPlayer(string $playerName): Await {
         return Await::f2c(function () use ($playerName) {
             return yield from $this->plugin->getDataProvider()->getSessionsByPlayer($playerName);
         });
     }
 
-    public function terminateSession(string $sessionId): \Generator {
+    public function terminateSession(string $sessionId): Await {
         return Await::f2c(function () use ($sessionId) {
             $session = yield from $this->plugin->getDataProvider()->getSession($sessionId);
             if ($session === null) {
@@ -116,7 +116,7 @@ class SessionService {
         });
     }
 
-    public function terminateAllSessionsForPlayer(string $playerName): \Generator {
+    public function terminateAllSessionsForPlayer(string $playerName): Await {
         return Await::f2c(function () use ($playerName) {
             yield from $this->plugin->getDataProvider()->deleteAllSessionsForPlayer($playerName);
 
@@ -127,7 +127,7 @@ class SessionService {
         });
     }
 
-    public function cleanupExpiredSessions(): \Generator {
+    public function cleanupExpiredSessions(): Await {
         return Await::f2c(function () {
             yield from $this->plugin->getDataProvider()->cleanupExpiredSessions();
         });
