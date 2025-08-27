@@ -1,6 +1,6 @@
 # Configuration for XAuth
 
-# Available languages: en
+# Available languages: en, id, ru, uk
 language: en
 
 # Enable titles on join
