@@ -118,6 +118,29 @@ class Main extends PluginBase {
                     $this->getScheduler()->scheduleRepeatingTask(new CleanupSessionsTask($this), $cleanupInterval * 20 * 60);
                     $this->getLogger()->debug("Expired session cleanup task scheduled.");
                 }
+
+                $this->getServer()->getPluginManager()->registerEvents(new PlayerActionListener($this), $this);
+                $this->getServer()->getPluginManager()->registerEvents(new PlayerSessionListener($this), $this);
+
+                if ((bool)($this->configData->getNested("waterdog-fix.enabled") ?? false)) {
+                    if ($this->getServer()->getConfigGroup()->getPropertyBool("player.verify-xuid", true)) {
+                        $this->getLogger()->warning("XAuth's WaterdogPE fix may not work correctly. To prevent issues, set 'player.verify-xuid' in pocketmine.yml to 'false'");
+                    }
+                    if ($this->getServer()->getOnlineMode()) {
+                        $this->getLogger()->alert("XAuth's WaterdogPE fix is not compatible with online mode. Please set 'xbox-auth' in server.properties to 'off'");
+                    }
+                    $this->getServer()->getPluginManager()->registerEvents(new WaterdogFixListener($this), $this);
+                    $this->getLogger()->info("WaterdogPE fix enabled!");
+                }
+
+                $scoreHudPlugin = $this->getServer()->getPluginManager()->getPlugin("ScoreHud");
+                if ($scoreHudPlugin instanceof ScoreHud) {
+                    $this->getServer()->getPluginManager()->registerEvents(new ScoreHudListener($this), $this);
+                }
+
+                if ((bool)(($this->configData->getNested("geoip.enabled") ?? false))) {
+                    $this->getServer()->getPluginManager()->registerEvents(new GeoIPListener($this), $this);
+                }
             } catch (\Throwable $e) {
                 $this->getLogger()->error("Failed to initialize DataProvider or schedule cleanup task: " . $e->getMessage());
                 $this->getServer()->getPluginManager()->disablePlugin($this);
@@ -140,29 +163,6 @@ class Main extends PluginBase {
         $this->authenticationFlowManager->registerAuthenticationStep(new AutoLoginStep($this));
         $this->authenticationFlowManager->registerAuthenticationStep(new XAuthLoginStep($this));
         $this->authenticationFlowManager->registerAuthenticationStep(new XAuthRegisterStep($this));
-
-        $this->getServer()->getPluginManager()->registerEvents(new PlayerActionListener($this), $this);
-        $this->getServer()->getPluginManager()->registerEvents(new PlayerSessionListener($this), $this);
-
-        if ((bool)($this->configData->getNested("waterdog-fix.enabled") ?? false)) {
-            if ($this->getServer()->getConfigGroup()->getPropertyBool("player.verify-xuid", true)) {
-                $this->getLogger()->warning("XAuth's WaterdogPE fix may not work correctly. To prevent issues, set 'player.verify-xuid' in pocketmine.yml to 'false'");
-            }
-            if ($this->getServer()->getOnlineMode()) {
-                $this->getLogger()->alert("XAuth's WaterdogPE fix is not compatible with online mode. Please set 'xbox-auth' in server.properties to 'off'");
-            }
-            $this->getServer()->getPluginManager()->registerEvents(new WaterdogFixListener($this), $this);
-            $this->getLogger()->info("WaterdogPE fix enabled!");
-        }
-
-        $scoreHudPlugin = $this->getServer()->getPluginManager()->getPlugin("ScoreHud");
-        if ($scoreHudPlugin instanceof ScoreHud) {
-            $this->getServer()->getPluginManager()->registerEvents(new ScoreHudListener($this), $this);
-        }
-
-        if ((bool)(($this->configData->getNested("geoip.enabled") ?? false))) {
-            $this->getServer()->getPluginManager()->registerEvents(new GeoIPListener($this), $this);
-        }
 
         $this->getServer()->getCommandMap()->register("register", new RegisterCommand($this));
         $this->getServer()->getCommandMap()->register("login", new LoginCommand($this));
