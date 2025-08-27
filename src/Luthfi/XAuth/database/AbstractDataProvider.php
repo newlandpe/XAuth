@@ -56,7 +56,7 @@ abstract class AbstractDataProvider implements DataProviderInterface {
     }
 
     public function initialize(): Await {
-        return Await::f2c(function () {
+        return Await::f2c(function () use ($this) {
             try {
                 yield Await::f2c(function () use ($this) {
                     return $this->connector->asyncGeneric('xauth.init');
