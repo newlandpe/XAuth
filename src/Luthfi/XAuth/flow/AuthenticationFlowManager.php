@@ -32,6 +32,7 @@ use Luthfi\XAuth\Main;
 use Luthfi\XAuth\steps\AuthenticationStep;
 use Luthfi\XAuth\steps\FinalizableStep;
 use pocketmine\player\Player;
+use SOFe\AwaitGenerator\Await;
 
 class AuthenticationFlowManager {
 
