@@ -109,7 +109,11 @@ class Main extends PluginBase {
 
         Await::f2c(function () {
             try {
-                $this->dataProvider = yield from DataProviderFactory::create($this, $this->configData->get('database'));
+                $awaitObject = DataProviderFactory::create($this, $this->configData->get('database'));
+                $this->getLogger()->info("Type of awaitObject: " . get_class($awaitObject));
+                $this->getLogger()->info("Does awaitObject implement Traversable? " . (string)($awaitObject instanceof \Traversable));
+                $this->getLogger()->info("Does awaitObject implement IteratorAggregate? " . (string)($awaitObject instanceof \IteratorAggregate));
+                $this->dataProvider = yield from $awaitObject;
                 $this->getLogger()->debug("DataProvider initialized.");
 
                 $autoLoginEnabled = (bool)($this->configData->getNested("auto-login.enabled") ?? false);
