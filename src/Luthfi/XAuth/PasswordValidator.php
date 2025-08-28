@@ -43,7 +43,12 @@ class PasswordValidator {
 
         if ($enableWeakCheck) {
             $weakPasswordFile = (string)($config->getNested('password_complexity.weak_password_list_file') ?? 'weak_passwords.txt');
-            $filePath = $this->plugin->getDataFolder() . $weakPasswordFile;
+
+            if (!preg_match('/^(?:[A-Z]:\\\\|\\\\|\/)/i', $weakPasswordFile)) {
+                $filePath = $this->plugin->getDataFolder() . $weakPasswordFile;
+            } else {
+                $filePath = $weakPasswordFile;
+            }
 
             // If using the default weak password file and it doesn't exist, create it.
             if ($weakPasswordFile === 'weak_passwords.txt' && !file_exists($filePath)) {
@@ -51,8 +56,9 @@ class PasswordValidator {
             }
 
             if (file_exists($filePath)) {
-                $this->weakPasswords = array_map('trim', file($filePath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES));
-                $this->weakPasswords = array_map('strtolower', $this->weakPasswords);
+                $list = array_map('trim', file($filePath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES));
+                $list = array_map('strtolower', $list);
+                $this->weakPasswords = array_flip($list);
             } else {
                 $this->plugin->getLogger()->warning("Weak password list file not found: {$filePath}");
             }
@@ -64,43 +70,44 @@ class PasswordValidator {
 
         $minLength = (int)($complexityConfig['min_length'] ?? 6);
         if (strlen($password) < $minLength) {
-            $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["password_too_short"] ?? "");
-            return str_replace('{length}', (string)$minLength, $message);
+            return str_replace('{length}', (string)$minLength, $this->getMessage("password_too_short"));
         }
 
         $maxLength = (int)($complexityConfig['max_length'] ?? 64);
         if (strlen($password) > $maxLength) {
-            $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["password_too_long"] ?? "");
-            return str_replace('{length}', (string)$maxLength, $message);
+            return str_replace('{length}', (string)$maxLength, $this->getMessage("password_too_long"));
         }
 
         $requireUppercase = (bool)($complexityConfig['require_uppercase'] ?? false);
         if ($requireUppercase && !preg_match('/[A-Z]/', $password)) {
-            return (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["password_no_uppercase"] ?? "");
+            return $this->getMessage("password_no_uppercase");
         }
 
         $requireLowercase = (bool)($complexityConfig['require_lowercase'] ?? false);
         if ($requireLowercase && !preg_match('/[a-z]/', $password)) {
-            return (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["password_no_lowercase"] ?? "");
+            return $this->getMessage("password_no_lowercase");
         }
 
         $requireNumber = (bool)($complexityConfig['require_number'] ?? false);
         if ($requireNumber && !preg_match('/[0-9]/', $password)) {
-            return (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["password_no_number"] ?? "");
+            return $this->getMessage("password_no_number");
         }
 
         $requireSymbol = (bool)($complexityConfig['require_symbol'] ?? false);
         if ($requireSymbol && !preg_match('/[^a-zA-Z0-9]/', $password)) {
-            return (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["password_no_symbol"] ?? "");
+            return $this->getMessage("password_no_symbol");
         }
 
         // Check against weak password list
-        if ((bool)($complexityConfig['enable_weak_password_check'] ?? false)) {
-            if (in_array(strtolower($password), $this->weakPasswords, true)) {
-                return (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["password_is_weak"] ?? "");
-            }
+        if (!empty($this->weakPasswords) && isset($this->weakPasswords[strtolower($password)])) {
+            return $this->getMessage("password_is_weak");
         }
 
         return null;
+    }
+
+    private function getMessage(string $key): string {
+        $messages = $this->plugin->getCustomMessages()->get("messages");
+        return is_array($messages) && isset($messages[$key]) ? (string)$messages[$key] : "";
     }
 }
