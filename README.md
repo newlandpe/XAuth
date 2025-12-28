@@ -75,7 +75,7 @@ Here are the commands available in XAuth:
   - `/xauth setpassword <player_name> <new_password>`: Sets a new password for a player's account.
   - `/xauth unregister <player_name>`: Unregisters a player's account, deleting their data.
   - `/xauth reload`: Reloads the plugin's configuration and language files.
-  - `/xauth migrate-provider <source_provider> <destination_provider>`: Migrates player data from one data provider to another (e.g., YAML to SQLite). (Console only)
+  - `/xauth migrate-provider <source_provider> <destination_provider>`: Migrates player data from one data provider to another (e.g., SQLite to MySQL). (Console only)
   - `/xauth forcepasswordchange <player_name>`: Forces a player to change their password on next login.
   - `/xauth status <subcommand>`: Manage online player authentication status.
     - `/xauth status list [player]`: List online players and their authentication status.
