@@ -43,7 +43,7 @@ The plugin generates a `config.yml` file in `plugin_data/XAuth/` upon first run.
 - **Auto-login:** Configure security level, session lifetime, and cleanup intervals.
 - **Password Security:** Complexity requirements, weak-password checks, and modern hashing algorithms (BCRYPT, ARGON2).
 - **Forms:** Optional UI-based login/register forms with close/kick handling.
-- **Database:** Choose between `yaml`, `json`, `sqlite`, or `mysql` for storing player data.
+- **Database:** Choose between `sqlite` or `mysql` for storing player data.
 - **Brute-force Protection:** Limit failed attempts, apply temporary blocks, and kick offenders.
 - **Command Settings:** Fine-tune commands like `/logout`, `/unregister`, and forced password changes.
 - **Session & Timeouts:** Control login timeout and session expiration.
