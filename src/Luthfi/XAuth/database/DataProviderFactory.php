@@ -1,12 +1,12 @@
 <?php
 
 /*
- *
- * __  __    _         _   _
- * \ \/ /   / \  _   _| |_| |__
- *  \  /   / _ \| | | | __| '_ \
- *  /  \  / ___ \ |_| | |_| | | |
- * /_/\_\/_/   \_\__,_|\__|_| |_|
+ * 
+ *  _          _   _     __  __  ____ _      __  __    _         _   _
+ * | |   _   _| |_| |__ |  \/  |/ ___( )___  \ \/ /   / \  _   _| |_| |__
+ * | |  | | | | __| '_ \| |\/| | |   |// __|  \  /   / _ \| | | | __| '_ \
+ * | |__| |_| | |_| | | | |  | | |___  \__ \  /  \  / ___ \ |_| | |_| | | |
+ * |_____\__,_|\__|_| |_|_|  |_|\____| |___/ /_/\_\/_/   \_\__,_|\__|_| |_|
  *
  * This program is free software: you can redistribute and/or modify
  * it under the terms of the CSSM Unlimited License v2.0.
@@ -29,31 +29,49 @@ namespace Luthfi\XAuth\database;
 
 use InvalidArgumentException;
 use Luthfi\XAuth\Main;
-use SOFe\AwaitGenerator\Await;
+use poggit\libasynql\DataConnector;
+use poggit\libasynql\libasynql;
 
 class DataProviderFactory {
 
-    /**
-     * @param Main $plugin
-     */
-    public static function create(Main $plugin, array $config): Await {
-        $providerType = strtolower((string)($config['type'] ?? 'yaml'));
-
-        return Await::f2c(function () use ($plugin, $providerType) {
-            $provider = self::createProvider($plugin, $providerType);
-            yield from $provider->initialize();
-            return $provider;
-        });
+    public static function create(Main $plugin, array $config): DataProviderInterface {
+        $providerType = strtolower((string)($config['type'] ?? 'sqlite'));
+        return self::createProvider($plugin, $providerType);
     }
 
     public static function createProvider(Main $plugin, string $providerType): DataProviderInterface {
+        $fullDbConfig = $plugin->getConfig()->get('database', []);
+
+        if (!isset($fullDbConfig[$providerType])) {
+            throw new InvalidArgumentException("Configuration for '" . $providerType . "' not found in the 'database' section of config.yml");
+        }
+
+        $providerConfig = $fullDbConfig[$providerType];
+        $providerConfig['type'] = $providerType;
+
+        $logQueries = $plugin->getConfig()->getNested('database.log_queries', false);
+
+        $originalType = $fullDbConfig['type'] ?? null;
+        $fullDbConfig['type'] = $providerType;
+
+        $connector = libasynql::create(
+            $plugin,
+            $fullDbConfig,
+            [$providerType => $providerType . ".sql"],
+            $logQueries
+        );
+
+        if ($originalType !== null) {
+            $fullDbConfig['type'] = $originalType;
+        }
+
         switch ($providerType) {
             case 'sqlite':
-                return new SqliteProvider($plugin);
+                return new SqliteProvider($plugin, $connector);
             case 'mysql':
-                return new MysqlProvider($plugin);
+                return new MysqlProvider($plugin, $connector);
             default:
-                throw new InvalidArgumentException("Invalid data provider: " . $providerType);
+                throw new InvalidArgumentException("Invalid data provider type: " . $providerType);
         }
     }
 }

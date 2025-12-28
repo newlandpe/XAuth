@@ -2,11 +2,11 @@
 
 /*
  *
- * __  __    _         _   _
- * \ \/ /   / \  _   _| |_| |__
- *  \  /   / _ \| | | | __| '_ \
- *  /  \  / ___ \ |_| | |_| | | |
- * /_/\_\/_/   \_\__,_|\__|_| |_|
+ *  _          _   _     __  __  ____ _      __  __    _         _   _
+ * | |   _   _| |_| |__ |  \/  |/ ___( )___  \ \/ /   / \  _   _| |_| |__
+ * | |  | | | | __| '_ \| |\/| | |   |// __|  \  /   / _ \| | | | __| '_ \
+ * | |__| |_| | |_| | | | |  | | |___  \__ \  /  \  / ___ \ |_| | |_| | | |
+ * |_____\__,_|\__|_| |_|_|  |_|\____| |___/ /_/\_\/_/   \_\__,_|\__|_| |_|
  *
  * This program is free software: you can redistribute and/or modify
  * it under the terms of the CSSM Unlimited License v2.0.
@@ -62,7 +62,7 @@ class XAuthRegisterStep implements AuthenticationStep {
                 if ($formsEnabled) {
                     $this->plugin->getFormManager()->sendRegisterForm($player);
                 } else {
-                    $this->plugin->sendTitleMessage($player, "register_prompt");
+                    $this->plugin->getTitleManager()->sendTitle($player, "register_prompt", null, true);
                 }
             } else {
                 $this->skip($player);
@@ -71,11 +71,9 @@ class XAuthRegisterStep implements AuthenticationStep {
     }
 
     public function complete(Player $player): void {
-        $this->plugin->getAuthenticationFlowManager()->completeStep($player, $this->getId());
         $messages = (array)$this->plugin->getCustomMessages()->get("messages");
         $player->sendMessage((string)($messages["register_success"] ?? "§aYou have successfully registered!"));
-        $this->plugin->sendTitleMessage($player, "register_success");
-        $this->plugin->scheduleClearTitleTask($player, 2 * 20);
+        $this->plugin->getTitleManager()->sendTitle($player, "register_success", 2 * 20);
         (new PlayerRegisterEvent($player))->call();
     }
 

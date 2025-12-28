@@ -89,7 +89,7 @@ database:
   mysql:
     host: 127.0.0.1
     port: 3306
-    user: root
+    username: root
     password: ""
     schema: xauth
     socket: "" # Optional: Path to the MySQL socket file (e.g., /var/run/mysqld/mysqld.sock)
@@ -100,7 +100,7 @@ database:
       ca-certificate: "" # Path to the CA certificate file
       ca-path: "" # Path to a directory containing trusted CA certificates
       cipher-algorithms: "" # List of allowable ciphers (e.g., DHE-RSA-AES256-SHA)
-  log_queries: false # Set to true to log all database queries at DEBUG level (useful for debugging)
+  log_queries: true # Set to true to log all database queries at DEBUG level (useful for debugging)
 
 # Enable or disable data migration.
 # If true, XAuth will attempt to migrate data from older formats (e.g., players.yml)

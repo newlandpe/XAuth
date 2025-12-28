@@ -2,11 +2,11 @@
 
 /*
  *
- * __  __    _         _   _
- * \ \/ /   / \  _   _| |_| |__
- *  \  /   / _ \| | | | __| '_ \
- *  /  \  / ___ \ |_| | |_| | | |
- * /_/\_\/_/   \_\__,_|\__|_| |_|
+ *  _          _   _     __  __  ____ _      __  __    _         _   _
+ * | |   _   _| |_| |__ |  \/  |/ ___( )___  \ \/ /   / \  _   _| |_| |__
+ * | |  | | | | __| '_ \| |\/| | |   |// __|  \  /   / _ \| | | | __| '_ \
+ * | |__| |_| | |_| | | | |  | | |___  \__ \  /  \  / ___ \ |_| | |_| | | |
+ * |_____\__,_|\__|_| |_|_|  |_|\____| |___/ /_/\_\/_/   \_\__,_|\__|_| |_|
  *
  * This program is free software: you can redistribute and/or modify
  * it under the terms of the CSSM Unlimited License v2.0.
@@ -27,6 +27,7 @@ declare(strict_types=1);
 
 namespace Luthfi\XAuth\service;
 
+use Generator;
 use Luthfi\XAuth\event\PlayerAuthenticateEvent;
 use Luthfi\XAuth\event\PlayerAuthenticationFailedEvent;
 use Luthfi\XAuth\event\PlayerChangePasswordEvent;
@@ -38,11 +39,12 @@ use Luthfi\XAuth\exception\IncorrectPasswordException;
 use Luthfi\XAuth\exception\NotRegisteredException;
 use Luthfi\XAuth\exception\PasswordMismatchException;
 use Luthfi\XAuth\exception\PlayerBlockedException;
+use Luthfi\XAuth\flow\AuthenticationContext;
 use Luthfi\XAuth\Main;
 use pocketmine\player\Player;
 use pocketmine\Server;
-use pocketmine\utils\InvalidCommandSyntaxException;
-use SOFe\AwaitGenerator\Await;
+use pocketmine\command\utils\InvalidCommandSyntaxException;
+use RuntimeException;
 
 class AuthenticationService {
 
@@ -61,19 +63,31 @@ class AuthenticationService {
         $this->plugin = $plugin;
     }
 
-    public function finalizeAuthentication(Player $player, \Luthfi\XAuth\flow\AuthenticationContext $context): void {
+    public function finalizeAuthentication(Player $player, AuthenticationContext $context): Generator {
+        $this->plugin->getTitleManager()->clearTitle($player);
         $this->plugin->cancelKickTask($player);
-        $this->plugin->getDataProvider()->updatePlayerIp($player);
+        yield from $this->plugin->getDataProvider()->updatePlayerIp($player);
         $this->authenticatePlayer($player);
 
         if ((bool)$this->plugin->getConfig()->getNested('auto-login.enabled', false)) {
-            $this->plugin->getSessionService()->handleSession($player);
+            yield from $this->plugin->getSessionService()->handleSession($player);
         }
 
         $this->plugin->getPlayerStateService()->restorePlayerState($player);
         $this->plugin->getPlayerVisibilityService()->updatePlayerVisibility($player);
 
-        (new PlayerAuthenticateEvent($player))->call();
+        $loginType = $context->getLoginType();
+        if ($loginType === PlayerPreAuthenticateEvent::LOGIN_TYPE_MANUAL) {
+            $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["login_success"] ?? "You have successfully logged in!");
+            $player->sendMessage($message);
+            $this->plugin->getTitleManager()->sendTitle($player, "login_success", 2 * 20);
+        } elseif ($loginType === PlayerPreAuthenticateEvent::LOGIN_TYPE_REGISTRATION) {
+            $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["register_success"] ?? "You have successfully registered!");
+            $player->sendMessage($message);
+            $this->plugin->getTitleManager()->sendTitle($player, "register_success", 2 * 20);
+        }
+
+        (new PlayerAuthenticateEvent($player, $loginType))->call();
     }
 
     public function authenticatePlayer(Player $player): void {
@@ -93,212 +107,230 @@ class AuthenticationService {
         return array_keys($this->authenticatedPlayers);
     }
 
-    public function incrementLoginAttempts(Player $player): Await {
-        return Await::f2c(function () use ($player) {
-            $name = strtolower($player->getName());
-            if (!isset($this->loginAttempts[$name])) {
-                $this->loginAttempts[$name] = ['attempts' => 0, 'last_attempt_time' => 0];
-            }
-            $this->loginAttempts[$name]['attempts']++;
-            $this->loginAttempts[$name]['last_attempt_time'] = time();
+    public function incrementLoginAttempts(Player $player): Generator {
+        $name = strtolower($player->getName());
+        if (!isset($this->loginAttempts[$name])) {
+            $this->loginAttempts[$name] = ['attempts' => 0, 'last_attempt_time' => 0];
+        }
+        $this->loginAttempts[$name]['attempts']++;
+        $this->loginAttempts[$name]['last_attempt_time'] = time();
 
-            $bruteforceConfig = (array)$this->plugin->getConfig()->get('bruteforce_protection');
-            $maxAttempts = (int)($bruteforceConfig['max_attempts'] ?? 5);
-            if ($this->loginAttempts[$name]['attempts'] >= $maxAttempts) {
-                $blockTimeMinutes = (int)($bruteforceConfig['block_time_minutes'] ?? 10);
-                yield from $this->plugin->getDataProvider()->setBlockedUntil($name, time() + ($blockTimeMinutes * 60));
-                $this->clearLoginAttempts($player);
-            }
-        });
+        $bruteforceConfig = (array)$this->plugin->getConfig()->get('bruteforce_protection');
+        $maxAttempts = (int)($bruteforceConfig['max_attempts'] ?? 5);
+        if ($this->loginAttempts[$name]['attempts'] >= $maxAttempts) {
+            $blockTimeMinutes = (int)($bruteforceConfig['block_time_minutes'] ?? 10);
+            yield from $this->plugin->getDataProvider()->setBlockedUntil($name, time() + ($blockTimeMinutes * 60));
+            $this->clearLoginAttempts($player);
+        }
     }
 
-    public function isPlayerBlocked(Player $player, int $maxAttempts, int $blockTimeMinutes): Await {
-        return Await::f2c(function () use ($player, $maxAttempts) {
-            $blockedUntil = yield from $this->plugin->getDataProvider()->getBlockedUntil($player->getName());
-            if ($blockedUntil > time()) {
-                return true;
-            }
+    public function isPlayerBlocked(Player $player, int $maxAttempts, int $blockTimeMinutes): Generator {
+        $blockedUntil = yield from $this->plugin->getDataProvider()->getBlockedUntil($player->getName());
+        if ($blockedUntil > time()) {
+            return true;
+        }
 
-            $name = strtolower($player->getName());
-            return isset($this->loginAttempts[$name]) && $this->loginAttempts[$name]['attempts'] >= $maxAttempts;
-        });
+        $name = strtolower($player->getName());
+        return isset($this->loginAttempts[$name]) && $this->loginAttempts[$name]['attempts'] >= $maxAttempts;
     }
 
-    public function getRemainingBlockTime(Player $player, int $blockTimeMinutes): Await {
-        return Await::f2c(function () use ($player, $blockTimeMinutes) {
-            $blockedUntil = yield from $this->plugin->getDataProvider()->getBlockedUntil($player->getName());
-            if ($blockedUntil > time()) {
-                return (int)ceil(($blockedUntil - time()) / 60);
-            }
-            return 0;
-        });
+    public function getRemainingBlockTime(Player $player, int $blockTimeMinutes): Generator {
+        $blockedUntil = yield from $this->plugin->getDataProvider()->getBlockedUntil($player->getName());
+        if ($blockedUntil > time()) {
+            return (int)ceil(($blockedUntil - time()) / 60);
+        }
+        return 0;
     }
 
     public function clearLoginAttempts(Player $player): void {
         unset($this->loginAttempts[strtolower($player->getName())]);
     }
 
-    public function isPlayerBlockedByName(string $name, int $maxAttempts, int $blockTimeMinutes): Await {
-        return Await::f2c(function () use ($name) {
-            $blockedUntil = yield from $this->plugin->getDataProvider()->getBlockedUntil($name);
-            return $blockedUntil > time();
-        });
+    public function isPlayerBlockedByName(string $name, int $maxAttempts, int $blockTimeMinutes): Generator {
+        $blockedUntil = yield from $this->plugin->getDataProvider()->getBlockedUntil($name);
+        return $blockedUntil > time();
     }
 
-    public function getRemainingBlockTimeByName(string $name, int $blockTimeMinutes): Await {
-        return Await::f2c(function () use ($name, $blockTimeMinutes) {
-            $blockedUntil = yield from $this->plugin->getDataProvider()->getBlockedUntil($name);
-            if ($blockedUntil > time()) {
-                return (int)ceil(($blockedUntil - time()) / 60);
-            }
-            return 0;
-        });
+    public function getRemainingBlockTimeByName(string $name, int $blockTimeMinutes): Generator {
+        $blockedUntil = yield from $this->plugin->getDataProvider()->getBlockedUntil($name);
+        if ($blockedUntil > time()) {
+            return (int)ceil(($blockedUntil - time()) / 60);
+        }
+        return 0;
     }
 
-    public function handleLoginRequest(Player $player, string $password): Await {
-        return Await::f2c(function () use ($player, $password) {
-            if ($this->isPlayerAuthenticated($player)) {
-                throw new AlreadyLoggedInException();
+    public function handleLoginRequest(Player $player, string $password): Generator {
+        if ($this->isPlayerAuthenticated($player)) {
+            throw new AlreadyLoggedInException();
+        }
+
+        $bruteforceConfig = (array)$this->plugin->getConfig()->get('bruteforce_protection');
+        $enabled = (bool)($bruteforceConfig['enabled'] ?? false);
+        $maxAttempts = (int)($bruteforceConfig['max_attempts'] ?? 0);
+        $blockTimeMinutes = (int)($bruteforceConfig['block_time_minutes'] ?? 0);
+
+        if ($enabled && (yield from $this->isPlayerBlocked($player, $maxAttempts, $blockTimeMinutes))) {
+            $remainingMinutes = yield from $this->getRemainingBlockTime($player, $blockTimeMinutes);
+            throw new PlayerBlockedException($remainingMinutes);
+        }
+
+        $playerData = yield from $this->plugin->getDataProvider()->getPlayer($player);
+        if ($playerData === null) {
+            throw new NotRegisteredException();
+        }
+
+        if (yield from $this->plugin->getDataProvider()->isPlayerLocked($player->getName())) {
+            throw new AccountLockedException();
+        }
+
+        $storedPasswordHash = (string)($playerData["password"] ?? '');
+        $passwordHasher = $this->plugin->getPasswordHasher();
+
+        if (!$passwordHasher->verifyPassword($password, $storedPasswordHash)) {
+            yield from $this->incrementLoginAttempts($player);
+
+            $failedAttempts = $this->loginAttempts[strtolower($player->getName())]['attempts'] ?? 1;
+            $event = new PlayerAuthenticationFailedEvent($player, $failedAttempts);
+            $event->call();
+
+            if ($event->isCancelled()) {
+                return;
             }
 
-            $bruteforceConfig = (array)$this->plugin->getConfig()->get('bruteforce_protection');
-            $enabled = (bool)($bruteforceConfig['enabled'] ?? false);
-            $maxAttempts = (int)($bruteforceConfig['max_attempts'] ?? 0);
-            $blockTimeMinutes = (int)($bruteforceConfig['block_time_minutes'] ?? 0);
+            throw new IncorrectPasswordException();
+        }
 
-            if ($enabled && (yield from $this->isPlayerBlocked($player, $maxAttempts, $blockTimeMinutes))) {
-                $remainingMinutes = yield from $this->getRemainingBlockTime($player, $blockTimeMinutes);
-                throw new PlayerBlockedException($remainingMinutes);
-            }
-
-            $playerData = yield from $this->plugin->getDataProvider()->getPlayer($player);
-            if ($playerData === null) {
-                throw new NotRegisteredException();
-            }
-
-            if (yield from $this->plugin->getDataProvider()->isPlayerLocked($player->getName())) {
-                throw new AccountLockedException();
-            }
-
-            $storedPasswordHash = (string)($playerData["password"] ?? '');
-            $passwordHasher = $this->plugin->getPasswordHasher();
-
-            if (!$passwordHasher->verifyPassword($password, $storedPasswordHash)) {
-                yield from $this->incrementLoginAttempts($player);
-
-                $failedAttempts = $this->loginAttempts[strtolower($player->getName())]['attempts'] ?? 1;
-                $event = new PlayerAuthenticationFailedEvent($player, $failedAttempts);
-                $event->call();
-
-                if ($event->isCancelled()) {
-                    return;
-                }
-
-                throw new IncorrectPasswordException();
-            }
-
-            if ($passwordHasher->needsRehash($storedPasswordHash)) {
-                $newHashedPassword = $passwordHasher->hashPassword($password);
-                yield from $this->plugin->getDataProvider()->changePassword($player, $newHashedPassword);
-            }
-
-            $this->plugin->getAuthenticationFlowManager()->getContextForPlayer($player)->setLoginType(PlayerPreAuthenticateEvent::LOGIN_TYPE_MANUAL);
-            $this->plugin->getAuthenticationFlowManager()->completeStep($player, 'xauth_login');
-        });
-    }
-
-    public function handleChangePasswordRequest(Player $player, string $oldPassword, string $newPassword, string $confirmNewPassword): Await {
-        return Await::f2c(function () use ($player, $oldPassword, $newPassword, $confirmNewPassword) {
-            $playerData = yield from $this->plugin->getDataProvider()->getPlayer($player);
-            if ($playerData === null) {
-                throw new NotRegisteredException();
-            }
-
-            $passwordHasher = $this->plugin->getPasswordHasher();
-            $currentHashedPassword = (string)($playerData["password"] ?? '');
-
-            if (!$passwordHasher->verifyPassword($oldPassword, $currentHashedPassword)) {
-                throw new IncorrectPasswordException();
-            }
-
-            if ($passwordHasher->needsRehash($currentHashedPassword)) {
-                $currentHashedPassword = $passwordHasher->hashPassword($oldPassword);
-                yield from $this->plugin->getDataProvider()->changePassword($player, $currentHashedPassword);
-            }
-
-            if (($message = $this->plugin->getPasswordValidator()->validatePassword($newPassword)) !== null) {
-                throw new InvalidCommandSyntaxException($message);
-            }
-
-            if ($newPassword !== $confirmNewPassword) {
-                throw new PasswordMismatchException();
-            }
-
-            $newHashedPassword = $passwordHasher->hashPassword($newPassword);
+        if ($passwordHasher->needsRehash($storedPasswordHash)) {
+            $newHashedPassword = $passwordHasher->hashPassword($password);
             yield from $this->plugin->getDataProvider()->changePassword($player, $newHashedPassword);
+        }
 
-            (new PlayerChangePasswordEvent($player))->call();
-        });
+        $context = $this->plugin->getAuthenticationFlowManager()->ensureContextExists($player);
+        if ($context === null) {
+            $this->plugin->getLogger()->critical("ensureContextExists returned null for player " . $player->getName());
+        }
+        $context->setLoginType(PlayerPreAuthenticateEvent::LOGIN_TYPE_MANUAL);
+        $this->plugin->getAuthenticationFlowManager()->completeStep($player, 'xauth_login');
     }
 
-    public function handleForceChangePasswordRequest(Player $player, string $newPassword, string $confirmNewPassword): Await {
-        return Await::f2c(function () use ($player, $newPassword, $confirmNewPassword) {
-            if (($message = $this->plugin->getPasswordValidator()->validatePassword($newPassword)) !== null) {
-                throw new InvalidCommandSyntaxException($message);
-            }
+    public function handleChangePasswordRequest(Player $player, string $oldPassword, string $newPassword, string $confirmNewPassword): Generator {
+        $playerData = yield from $this->plugin->getDataProvider()->getPlayer($player);
+        if ($playerData === null) {
+            throw new NotRegisteredException();
+        }
 
-            if ($newPassword !== $confirmNewPassword) {
-                throw new PasswordMismatchException();
-            }
+        $passwordHasher = $this->plugin->getPasswordHasher();
+        $currentHashedPassword = (string)($playerData["password"] ?? '');
 
-            $passwordHasher = $this->plugin->getPasswordHasher();
-            $newHashedPassword = $passwordHasher->hashPassword($newPassword);
-            yield from $this->plugin->getDataProvider()->changePassword($player, $newHashedPassword);
-            yield from $this->plugin->getDataProvider()->setMustChangePassword($player->getName(), false);
-            $this->stopForcePasswordChange($player);
+        if (!$passwordHasher->verifyPassword($oldPassword, $currentHashedPassword)) {
+            throw new IncorrectPasswordException();
+        }
 
-            (new PlayerChangePasswordEvent($player))->call();
-        });
+        if ($passwordHasher->needsRehash($currentHashedPassword)) {
+            $currentHashedPassword = $passwordHasher->hashPassword($oldPassword);
+            yield from $this->plugin->getDataProvider()->changePassword($player, $currentHashedPassword);
+        }
+
+        if (($message = $this->plugin->getPasswordValidator()->validatePassword($newPassword)) !== null) {
+            throw new InvalidCommandSyntaxException($message);
+        }
+
+        if ($newPassword !== $confirmNewPassword) {
+            throw new PasswordMismatchException();
+        }
+
+        $newHashedPassword = $passwordHasher->hashPassword($newPassword);
+        yield from $this->plugin->getDataProvider()->changePassword($player, $newHashedPassword);
+        (new PlayerChangePasswordEvent($player))->call();
     }
 
-    public function handleLogout(Player $player): Await {
-        return Await::f2c(function () use ($player) {
-            $this->plugin->cancelKickTask($player);
-            $this->plugin->clearTitleTask($player);
+    public function handleChangePasswordRequestByName(string $username, string $oldPassword, string $newPassword, string $confirmNewPassword): Generator {
+        $offlinePlayer = Server::getInstance()->getOfflinePlayer($username);
+        $playerData = yield from $this->plugin->getDataProvider()->getPlayer($offlinePlayer);
+        if ($playerData === null) {
+            throw new NotRegisteredException();
+        }
 
-            $this->deauthenticatePlayer($player);
+        $passwordHasher = $this->plugin->getPasswordHasher();
+        $currentHashedPassword = (string)($playerData["password"] ?? '');
 
-            $this->plugin->getPlayerStateService()->protectPlayer($player);
-            $this->plugin->scheduleKickTask($player);
+        if (!$passwordHasher->verifyPassword($oldPassword, $currentHashedPassword)) {
+            throw new IncorrectPasswordException();
+        }
 
-            $playerData = yield from $this->plugin->getDataProvider()->getPlayer($player);
-            if ($playerData !== null) {
-                $formsEnabled = (bool)($this->plugin->getConfig()->getNested("forms.enabled") ?? true);
-                $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["login_prompt"] ?? "");
-                $player->sendMessage($message);
-                if ($formsEnabled) {
-                    $this->plugin->getFormManager()->sendLoginForm($player);
-                } else {
-                    $this->plugin->sendTitleMessage($player, "login_prompt");
-                }
+        if ($passwordHasher->needsRehash($currentHashedPassword)) {
+            $currentHashedPassword = $passwordHasher->hashPassword($oldPassword);
+            yield from $this->plugin->getDataProvider()->changePassword($offlinePlayer, $currentHashedPassword);
+        }
+
+        if (($message = $this->plugin->getPasswordValidator()->validatePassword($newPassword)) !== null) {
+            throw new InvalidCommandSyntaxException($message);
+        }
+
+        if ($newPassword !== $confirmNewPassword) {
+            throw new PasswordMismatchException();
+        }
+
+        $newHashedPassword = $this->plugin->getPasswordHasher()->hashPassword($newPassword);
+        yield from $this->plugin->getDataProvider()->changePassword($offlinePlayer, $newHashedPassword);
+
+        // We don't call PlayerChangePasswordEvent because the player is offline.
+    }
+
+    public function handleForceChangePasswordRequest(Player $player, string $newPassword, string $confirmNewPassword): Generator {
+        if (($message = $this->plugin->getPasswordValidator()->validatePassword($newPassword)) !== null) {
+            throw new InvalidCommandSyntaxException($message);
+        }
+
+        if ($newPassword !== $confirmNewPassword) {
+            throw new PasswordMismatchException();
+        }
+
+        $passwordHasher = $this->plugin->getPasswordHasher();
+        $newHashedPassword = $passwordHasher->hashPassword($newPassword);
+        yield from $this->plugin->getDataProvider()->changePassword($player, $newHashedPassword);
+        yield from $this->plugin->getDataProvider()->setMustChangePassword($player->getName(), false);
+        $this->stopForcePasswordChange($player);
+
+        (new PlayerChangePasswordEvent($player))->call();
+    }
+
+    public function handleLogout(Player $player): Generator {
+        $this->plugin->cancelKickTask($player);
+        $this->plugin->getTitleManager()->clearTitle($player);
+
+        $this->deauthenticatePlayer($player);
+
+        $this->plugin->getPlayerStateService()->protectPlayer($player);
+        $this->plugin->scheduleKickTask($player);
+
+        $playerData = yield from $this->plugin->getDataProvider()->getPlayer($player);
+        if ($playerData !== null) {
+            $formsEnabled = (bool)($this->plugin->getConfig()->getNested("forms.enabled") ?? true);
+            $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["login_prompt"] ?? "");
+            $player->sendMessage($message);
+            if ($formsEnabled) {
+                $this->plugin->getFormManager()->sendLoginForm($player);
             } else {
-                $formsEnabled = (bool)($this->plugin->getConfig()->getNested("forms.enabled") ?? true);
-                $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["register_prompt"] ?? "");
-                $player->sendMessage($message);
-                if ($formsEnabled) {
-                    $this->plugin->getFormManager()->sendRegisterForm($player);
-                } else {
-                    $this->plugin->sendTitleMessage($player, "register_prompt");
-                }
+                $this->plugin->getTitleManager()->sendTitle($player, "login_prompt", null, true);
             }
+        } else {
+            $formsEnabled = (bool)($this->plugin->getConfig()->getNested("forms.enabled") ?? true);
+            $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["register_prompt"] ?? "");
+            $player->sendMessage($message);
+            if ($formsEnabled) {
+                $this->plugin->getFormManager()->sendRegisterForm($player);
+            } else {
+                $this->plugin->getTitleManager()->sendTitle($player, "register_prompt", null, true);
+            }
+        }
 
-            (new PlayerDeauthenticateEvent($player, false))->call();
-        });
+        (new PlayerDeauthenticateEvent($player, false))->call();
     }
 
     public function handleQuit(Player $player): void {
         $this->plugin->cancelKickTask($player);
-        $this->plugin->clearTitleTask($player);
+        $this->plugin->getTitleManager()->clearTitle($player);
 
         $this->deauthenticatePlayer($player);
 
@@ -320,105 +352,93 @@ class AuthenticationService {
         return isset($this->forcePasswordChange[strtolower($player->getName())]);
     }
 
-    public function forcePasswordChangeByAdmin(string $playerName): Await {
-        return Await::f2c(function () use ($playerName) {
-            if (!(yield from $this->plugin->getDataProvider()->isPlayerRegistered($playerName))) {
-                throw new NotRegisteredException();
-            }
+    public function forcePasswordChangeByAdmin(string $playerName): Generator {
+        if (!(yield from $this->plugin->getDataProvider()->isPlayerRegistered($playerName))) {
+            throw new NotRegisteredException();
+        }
 
-            yield from $this->plugin->getDataProvider()->setMustChangePassword($playerName, true);
+        yield from $this->plugin->getDataProvider()->setMustChangePassword($playerName, true);
 
-            $player = $this->plugin->getServer()->getPlayerExact($playerName);
-            $forceImmediate = (bool)$this->plugin->getConfig()->getNested("command_settings.force_change_immediate", true);
+        $player = $this->plugin->getServer()->getPlayerExact($playerName);
+        $forceImmediate = (bool)$this->plugin->getConfig()->getNested("command_settings.force_change_immediate", true);
 
-            if ($player !== null && $forceImmediate) {
-                $this->startForcePasswordChange($player);
-            }
-        });
+        if ($player !== null && $forceImmediate) {
+            $this->startForcePasswordChange($player);
+        }
     }
 
-    public function lockAccount(string $playerName): Await {
-        return Await::f2c(function () use ($playerName) {
-            if (!(yield from $this->plugin->getDataProvider()->isPlayerRegistered($playerName))) {
-                throw new NotRegisteredException();
-            }
-            yield from $this->plugin->getDataProvider()->setPlayerLocked($playerName, true);
-        });
+    public function lockAccount(string $playerName): Generator {
+        if (!(yield from $this->plugin->getDataProvider()->isPlayerRegistered($playerName))) {
+            throw new NotRegisteredException();
+        }
+        yield from $this->plugin->getDataProvider()->setPlayerLocked($playerName, true);
     }
 
-    public function unlockAccount(string $playerName): Await {
-        return Await::f2c(function () use ($playerName) {
-            if (!(yield from $this->plugin->getDataProvider()->isPlayerRegistered($playerName))) {
-                throw new NotRegisteredException();
-            }
-            yield from $this->plugin->getDataProvider()->setPlayerLocked($playerName, false);
-        });
+    public function unlockAccount(string $playerName): Generator {
+        if (!(yield from $this->plugin->getDataProvider()->isPlayerRegistered($playerName))) {
+            throw new NotRegisteredException();
+        }
+        yield from $this->plugin->getDataProvider()->setPlayerLocked($playerName, false);
     }
 
-    public function setPlayerPassword(string $playerName, string $newPassword): Await {
-        return Await::f2c(function () use ($playerName, $newPassword) {
-            if (!(yield from $this->plugin->getDataProvider()->isPlayerRegistered($playerName))) {
-                throw new NotRegisteredException();
-            }
+    public function setPlayerPassword(string $playerName, string $newPassword): Generator {
+        if (!(yield from $this->plugin->getDataProvider()->isPlayerRegistered($playerName))) {
+            throw new NotRegisteredException();
+        }
 
-            if (($message = $this->plugin->getPasswordValidator()->validatePassword($newPassword)) !== null) {
-                throw new InvalidCommandSyntaxException($message);
-            }
+        if (($message = $this->plugin->getPasswordValidator()->validatePassword($newPassword)) !== null) {
+            throw new InvalidCommandSyntaxException($message);
+        }
 
-            $passwordHasher = $this->plugin->getPasswordHasher();
-            $newHashedPassword = $passwordHasher->hashPassword($newPassword);
-            $offlinePlayer = Server::getInstance()->getOfflinePlayer($playerName);
-            yield from $this->plugin->getDataProvider()->changePassword($offlinePlayer, $newHashedPassword);
-        });
+        $passwordHasher = $this->plugin->getPasswordHasher();
+        $newHashedPassword = $passwordHasher->hashPassword($newPassword);
+        $offlinePlayer = Server::getInstance()->getOfflinePlayer($playerName);
+        yield from $this->plugin->getDataProvider()->changePassword($offlinePlayer, $newHashedPassword);
     }
 
-    public function checkPlayerPassword(string $playerName, string $password): Await {
-        return Await::f2c(function () use ($playerName, $password) {
-            $playerData = yield from $this->plugin->getDataProvider()->getPlayer(Server::getInstance()->getOfflinePlayer($playerName));
-            if ($playerData === null) {
-                throw new NotRegisteredException();
-            }
+    public function checkPlayerPassword(string $playerName, string $password): Generator {
+        $playerData = yield from $this->plugin->getDataProvider()->getPlayer(Server::getInstance()->getOfflinePlayer($playerName));
+        if ($playerData === null) {
+            throw new NotRegisteredException();
+        }
 
-            $storedHash = (string)($playerData["password"] ?? '');
-            return $this->plugin->getPasswordHasher()->verifyPassword($password, $storedHash);
-        });
+        $storedHash = (string)($playerData["password"] ?? '');
+        return $this->plugin->getPasswordHasher()->verifyPassword($password, $storedHash);
     }
 
-    public function getPlayerLookupData(string $playerName): Await {
-        return Await::f2c(function () use ($playerName) {
-            $offlinePlayer = Server::getInstance()->getOfflinePlayer($playerName);
-            $playerData = yield from $this->plugin->getDataProvider()->getPlayer($offlinePlayer);
+    public function getPlayerLookupData(string $playerName): Generator {
+        $offlinePlayer = Server::getInstance()->getOfflinePlayer($playerName);
+        $playerData = yield from $this->plugin->getDataProvider()->getPlayer($offlinePlayer);
 
-            if ($playerData === null) {
-                return null;
+        if ($playerData === null) {
+            return null;
+        }
+
+        $lastLoginIp = "N/A";
+        $lastLoginTime = "N/A";
+
+        $autoLoginEnabled = (bool)($this->plugin->getConfig()->getNested("auto-login.enabled") ?? false);
+        if ($autoLoginEnabled) {
+            $sessions = yield from $this->plugin->getDataProvider()->getSessionsByPlayer($playerName);
+            if (!empty($sessions)) {
+                $latestSession = current($sessions);
+                $lastLoginIp = (string)($latestSession['ip_address'] ?? "N/A");
+                $lastLoginTime = (isset($latestSession["login_time"])) ? date("Y-m-d H:i:s", (int)$latestSession["login_time"]) : "N/A";
             }
+        } else {
+            $lastLoginIp = (string)($playerData["ip"] ?? "N/A");
+            $lastLoginTime = (isset($playerData["last_login_at"]) ? date("Y-m-d H:i:s", (int)$playerData["last_login_at"]) : "N/A");
+        }
 
-            $lastLoginIp = "N/A";
-            $lastLoginTime = "N/A";
+        $isPlayerLocked = yield from $this->plugin->getDataProvider()->isPlayerLocked($playerName);
 
-            $autoLoginEnabled = (bool)($this->plugin->getConfig()->getNested("auto-login.enabled") ?? false);
-            if ($autoLoginEnabled) {
-                $sessions = yield from $this->plugin->getDataProvider()->getSessionsByPlayer($playerName);
-                if (!empty($sessions)) {
-                    $latestSession = current($sessions);
-                    $lastLoginIp = (string)($latestSession['ip_address'] ?? "N/A");
-                    $lastLoginTime = (isset($latestSession["login_time"])) ? date("Y-m-d H:i:s", (int)$latestSession["login_time"]) : "N/A";
-                }
-            } else {
-                $lastLoginIp = (string)($playerData["ip"] ?? "N/A");
-                $lastLoginTime = (isset($playerData["last_login_at"]) ? date("Y-m-d H:i:s", (int)$playerData["last_login_at"]) : "N/A");
-            }
-
-            $isPlayerLocked = yield from $this->plugin->getDataProvider()->isPlayerLocked($playerName);
-
-            return [
-                'player_name' => $playerName,
-                'registered_at' => (isset($playerData["registered_at"]) ? date("Y-m-d H:i:s", (int)$playerData["registered_at"]) : "N/A"),
-                'registration_ip' => (isset($playerData["registration_ip"]) ? (string)$playerData["registration_ip"] : "N/A"),
-                'last_login_ip' => $lastLoginIp,
-                'last_login_at' => $lastLoginTime,
-                'locked_status' => ($isPlayerLocked ? "Yes" : "No")
-            ];
-        });
+        return [
+            'player_name' => $playerName,
+            'registered_at' => (isset($playerData["registered_at"]) ? date("Y-m-d H:i:s", (int)$playerData["registered_at"]) : "N/A"),
+            'registration_ip' => (isset($playerData["registration_ip"]) ? (string)$playerData["registration_ip"] : "N/A"),
+            'last_login_ip' => $lastLoginIp,
+            'last_login_at' => $lastLoginTime,
+            'locked_status' => ($isPlayerLocked ? "Yes" : "No")
+        ];
     }
 }

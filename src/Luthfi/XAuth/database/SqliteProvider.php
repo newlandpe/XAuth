@@ -2,11 +2,11 @@
 
 /*
  *
- * __  __    _         _   _
- * \ \/ /   / \  _   _| |_| |__
- *  \  /   / _ \| | | | __| '_ \
- *  /  \  / ___ \ |_| | |_| | | |
- * /_/\_\/_/   \_\__,_|\__|_| |_|
+ *  _          _   _     __  __  ____ _      __  __    _         _   _
+ * | |   _   _| |_| |__ |  \/  |/ ___( )___  \ \/ /   / \  _   _| |_| |__
+ * | |  | | | | __| '_ \| |\/| | |   |// __|  \  /   / _ \| | | | __| '_ \
+ * | |__| |_| | |_| | | | |  | | |___  \__ \  /  \  / ___ \ |_| | |_| | | |
+ * |_____\__,_|\__|_| |_|_|  |_|\____| |___/ /_/\_\/_/   \_\__,_|\__|_| |_|
  *
  * This program is free software: you can redistribute and/or modify
  * it under the terms of the CSSM Unlimited License v2.0.
@@ -27,20 +27,18 @@ declare(strict_types=1);
 
 namespace Luthfi\XAuth\database;
 
-use poggit\libasynql\SqlError;
-use SOFe\AwaitGenerator\Await;
+use Luthfi\XAuth\Main;
+use poggit\libasynql\DataConnector;
 
 class SqliteProvider extends AbstractDataProvider {
 
-    protected function init(): Await {
-        return Await::f2c(function () {
-            try {
-                yield from $this->connector->asyncGeneric('xauth.pragma.foreign_keys');
-                $this->plugin->getLogger()->debug("SQLite foreign keys enabled.");
-            } catch (SqlError $error) {
-                $this->plugin->getLogger()->error("Failed to enable SQLite foreign keys: " . $error->getMessage());
-            }
-        });
+    public function __construct(Main $plugin, DataConnector $connector) {
+        parent::__construct($plugin, $connector);
+    }
+
+    public function initialize(): \Generator {
+        yield from parent::initialize();
+        yield from $this->connector->asyncGeneric('xauth.pragma.foreign_keys');
     }
 
     protected function getSqlMap(): array {

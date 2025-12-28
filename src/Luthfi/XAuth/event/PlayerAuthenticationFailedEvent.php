@@ -2,11 +2,11 @@
 
 /*
  *
- * __  __    _         _   _
- * \ \/ /   / \  _   _| |_| |__
- *  \  /   / _ \| | | | __| '_ \
- *  /  \  / ___ \ |_| | |_| | | |
- * /_/\_\/_/   \_\__,_|\__|_| |_|
+ *  _          _   _     __  __  ____ _      __  __    _         _   _
+ * | |   _   _| |_| |__ |  \/  |/ ___( )___  \ \/ /   / \  _   _| |_| |__
+ * | |  | | | | __| '_ \| |\/| | |   |// __|  \  /   / _ \| | | | __| '_ \
+ * | |__| |_| | |_| | | | |  | | |___  \__ \  /  \  / ___ \ |_| | |_| | | |
+ * |_____\__,_|\__|_| |_|_|  |_|\____| |___/ /_/\_\/_/   \_\__,_|\__|_| |_|
  *
  * This program is free software: you can redistribute and/or modify
  * it under the terms of the CSSM Unlimited License v2.0.
@@ -27,10 +27,10 @@ declare(strict_types=1);
 
 namespace Luthfi\XAuth\event;
 
-use pocketmine\event\player\PlayerEvent;
-use pocketmine\player\Player;
 use pocketmine\event\Cancellable;
 use pocketmine\event\CancellableTrait;
+use pocketmine\event\player\PlayerEvent;
+use pocketmine\player\Player;
 
 /**
  * Called when a player fails to authenticate due to an incorrect password.

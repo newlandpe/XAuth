@@ -2,11 +2,11 @@
 
 /*
  *
- * __  __    _         _   _
- * \ \/ /   / \  _   _| |_| |__
- *  \  /   / _ \| | | | __| '_ \
- *  /  \  / ___ \ |_| | |_| | | |
- * /_/\_\/_/   \_\__,_|\__|_| |_|
+ *  _          _   _     __  __  ____ _      __  __    _         _   _
+ * | |   _   _| |_| |__ |  \/  |/ ___( )___  \ \/ /   / \  _   _| |_| |__
+ * | |  | | | | __| '_ \| |\/| | |   |// __|  \  /   / _ \| | | | __| '_ \
+ * | |__| |_| | |_| | | | |  | | |___  \__ \  /  \  / ___ \ |_| | |_| | | |
+ * |_____\__,_|\__|_| |_|_|  |_|\____| |___/ /_/\_\/_/   \_\__,_|\__|_| |_|
  *
  * This program is free software: you can redistribute and/or modify
  * it under the terms of the CSSM Unlimited License v2.0.
@@ -51,14 +51,14 @@ use Luthfi\XAuth\service\PlayerVisibilityService;
 use Luthfi\XAuth\service\PluginControlService;
 use Luthfi\XAuth\service\RegistrationService;
 use Luthfi\XAuth\service\SessionService;
+use Luthfi\XAuth\service\TitleManager;
 use Luthfi\XAuth\steps\AuthenticationStep;
 use Luthfi\XAuth\steps\AutoLoginStep;
 use Luthfi\XAuth\steps\XAuthLoginStep;
 use Luthfi\XAuth\steps\XAuthRegisterStep;
 use Luthfi\XAuth\tasks\CleanupSessionsTask;
-use Luthfi\XAuth\tasks\ClearTitleTask;
 use Luthfi\XAuth\tasks\KickTask;
-use Luthfi\XAuth\tasks\SendTitleTask;
+
 use Luthfi\XAuth\utils\MigrationManager;
 use MohamadRZ4\Placeholder\PlaceholderAPI;
 use pocketmine\player\Player;
@@ -66,6 +66,7 @@ use pocketmine\plugin\PluginBase;
 use pocketmine\scheduler\Task;
 use pocketmine\utils\Config;
 use SOFe\AwaitGenerator\Await;
+use Throwable;
 
 class Main extends PluginBase {
 
@@ -83,11 +84,11 @@ class Main extends PluginBase {
     private ?PluginControlService $pluginControlService = null;
     private ?MigrationManager $migrationManager = null;
     private ?AuthenticationFlowManager $authenticationFlowManager = null;
+    private ?TitleManager $titleManager = null;
 
-    /** @var array<string, \pocketmine\scheduler\TaskHandler> */
-    private array $titleTasks = [];
 
-    /** @var array<string, \pocketmine\scheduler\TaskHandler> */
+
+    /** @var array<string, \pocketmine/scheduler/TaskHandler> */
     private array $kickTasks = [];
 
     /** @var array<string, string> */
@@ -106,52 +107,6 @@ class Main extends PluginBase {
         $this->checkConfigVersion();
 
         $this->migrationManager = new MigrationManager($this);
-
-        Await::f2c(function () {
-            try {
-                $awaitObject = DataProviderFactory::create($this, $this->configData->get('database'));
-                $this->getLogger()->info("Type of awaitObject: " . get_class($awaitObject));
-                $this->getLogger()->info("Does awaitObject implement Traversable? " . (string)($awaitObject instanceof \Traversable));
-                $this->getLogger()->info("Does awaitObject implement IteratorAggregate? " . (string)($awaitObject instanceof \IteratorAggregate));
-                $this->dataProvider = yield from $awaitObject;
-                $this->getLogger()->debug("DataProvider initialized.");
-
-                $autoLoginEnabled = (bool)($this->configData->getNested("auto-login.enabled") ?? false);
-                if ($autoLoginEnabled) {
-                    $cleanupInterval = (int)($this->configData->getNested("auto-login.cleanup_interval_minutes") ?? 60);
-                    $this->getScheduler()->scheduleRepeatingTask(new CleanupSessionsTask($this), $cleanupInterval * 20 * 60);
-                    $this->getLogger()->debug("Expired session cleanup task scheduled.");
-                }
-
-                $this->getServer()->getPluginManager()->registerEvents(new PlayerActionListener($this), $this);
-                $this->getServer()->getPluginManager()->registerEvents(new PlayerSessionListener($this), $this);
-
-                if ((bool)($this->configData->getNested("waterdog-fix.enabled") ?? false)) {
-                    if ($this->getServer()->getConfigGroup()->getPropertyBool("player.verify-xuid", true)) {
-                        $this->getLogger()->warning("XAuth's WaterdogPE fix may not work correctly. To prevent issues, set 'player.verify-xuid' in pocketmine.yml to 'false'");
-                    }
-                    if ($this->getServer()->getOnlineMode()) {
-                        $this->getLogger()->alert("XAuth's WaterdogPE fix is not compatible with online mode. Please set 'xbox-auth' in server.properties to 'off'");
-                    }
-                    $this->getServer()->getPluginManager()->registerEvents(new WaterdogFixListener($this), $this);
-                    $this->getLogger()->info("WaterdogPE fix enabled!");
-                }
-
-                $scoreHudPlugin = $this->getServer()->getPluginManager()->getPlugin("ScoreHud");
-                if ($scoreHudPlugin instanceof ScoreHud) {
-                    $this->getServer()->getPluginManager()->registerEvents(new ScoreHudListener($this), $this);
-                }
-
-                if ((bool)(($this->configData->getNested("geoip.enabled") ?? false))) {
-                    $this->getServer()->getPluginManager()->registerEvents(new GeoIPListener($this), $this);
-                }
-            } catch (\Throwable $e) {
-                $this->getLogger()->error("Failed to initialize DataProvider or schedule cleanup task: " . $e->getMessage());
-                $this->getServer()->getPluginManager()->disablePlugin($this);
-                return;
-            }
-        });
-
         $this->passwordValidator = new PasswordValidator($this);
         $this->formManager = new FormManager($this);
         $this->passwordHasher = new PasswordHasher($this);
@@ -161,12 +116,61 @@ class Main extends PluginBase {
         $this->registrationService = new RegistrationService($this);
         $this->sessionService = new SessionService($this);
         $this->pluginControlService = new PluginControlService($this);
+        $this->titleManager = new TitleManager($this);
 
+        try {
+            $this->dataProvider = DataProviderFactory::create($this, (array)$this->configData->get('database'));
+            $this->dataProvider->initializeSync();
+            $this->getLogger()->debug("DataProvider initialized (SYNC).");
+            $this->onDatabaseInitialized();
+        } catch (Throwable $e) {
+            $this->getLogger()->error("Failed to initialize DataProvider: " . $e->getMessage());
+            $this->getServer()->getPluginManager()->disablePlugin($this);
+            return;
+        }
+    }
+
+    private function onDatabaseInitialized(): void {
         $this->authenticationFlowManager = new AuthenticationFlowManager($this);
 
         $this->authenticationFlowManager->registerAuthenticationStep(new AutoLoginStep($this));
         $this->authenticationFlowManager->registerAuthenticationStep(new XAuthLoginStep($this));
         $this->authenticationFlowManager->registerAuthenticationStep(new XAuthRegisterStep($this));
+
+        $autoLoginEnabled = (bool)($this->configData->getNested("auto-login.enabled") ?? false);
+        if ($autoLoginEnabled) {
+            $cleanupInterval = (int)($this->configData->getNested("auto-login.cleanup_interval_minutes") ?? 60);
+            $this->getScheduler()->scheduleRepeatingTask(new CleanupSessionsTask($this), $cleanupInterval * 20 * 60);
+            $this->getLogger()->debug("Expired session cleanup task scheduled.");
+        }
+
+        $this->getServer()->getPluginManager()->registerEvents(new PlayerActionListener($this), $this);
+        $this->getServer()->getPluginManager()->registerEvents(new PlayerSessionListener($this), $this);
+
+        if ((bool)($this->configData->getNested("waterdog-fix.enabled") ?? false)) {
+            if ($this->getServer()->getConfigGroup()->getPropertyBool("player.verify-xuid", true)) {
+                $this->getLogger()->warning("XAuth's WaterdogPE fix may not work correctly. To prevent issues, set 'player.verify-xuid' in pocketmine.yml to 'false'");
+            }
+            if ($this->getServer()->getOnlineMode()) {
+                $this->getLogger()->alert("XAuth's WaterdogPE fix is not compatible with online mode. Please set 'xbox-auth' in server.properties to 'off'");
+            }
+            $this->getServer()->getPluginManager()->registerEvents(new WaterdogFixListener($this), $this);
+            $this->getLogger()->info("WaterdogPE fix enabled!");
+        }
+
+        if ((bool)(($this->configData->getNested("geoip.enabled") ?? false))) {
+            $this->getServer()->getPluginManager()->registerEvents(new GeoIPListener($this), $this);
+        }
+
+        $scoreHudPlugin = $this->getServer()->getPluginManager()->getPlugin("ScoreHud");
+        if ($scoreHudPlugin instanceof ScoreHud) {
+            $this->getServer()->getPluginManager()->registerEvents(new ScoreHudListener($this), $this);
+        }
+
+        $placeholderAPI = $this->getServer()->getPluginManager()->getPlugin("PlaceholderAPI");
+        if ($placeholderAPI instanceof PlaceholderAPI) {
+            $placeholderAPI->registerExpansion(new XAuthExpansion($this));
+        }
 
         $this->getServer()->getCommandMap()->register("register", new RegisterCommand($this));
         $this->getServer()->getCommandMap()->register("login", new LoginCommand($this));
@@ -174,11 +178,6 @@ class Main extends PluginBase {
         $this->getServer()->getCommandMap()->register("logout", new LogoutCommand($this));
         $this->getServer()->getCommandMap()->register("unregister", new UnregisterCommand($this));
         $this->getServer()->getCommandMap()->register("xauth", new XAuthCommand($this));
-
-        $placeholderAPI = $this->getServer()->getPluginManager()->getPlugin("PlaceholderAPI");
-        if ($placeholderAPI instanceof PlaceholderAPI) {
-            $placeholderAPI->registerExpansion(new XAuthExpansion($this));
-        }
     }
 
     private function checkConfigVersion(): void {
@@ -188,22 +187,7 @@ class Main extends PluginBase {
         }
     }
 
-    public function sendTitleMessage(Player $player, string $messageKey): void {
-        $this->clearTitleTask($player);
 
-        if ((bool)$this->configData->get("enable_titles", false)) {
-            $titlesConfig = (array)$this->getCustomMessages()->get("titles", []);
-            if (isset($titlesConfig[$messageKey])) {
-                $titleConfig = $titlesConfig[$messageKey];
-                $title = (string)($titleConfig["title"] ?? "");
-                $subtitle = (string)($titleConfig["subtitle"] ?? "");
-                $interval = (int)(($titleConfig["interval"] ?? 0) * 20);
-
-                $handler = $this->getScheduler()->scheduleRepeatingTask(new SendTitleTask($player, $title, $subtitle), $interval);
-                $this->titleTasks[$player->getName()] = $handler;
-            }
-        }
-    }
 
     public function getDataProvider(): ?DataProviderInterface {
         return $this->dataProvider;
@@ -253,12 +237,12 @@ class Main extends PluginBase {
         return $this->migrationManager;
     }
 
-    public function isRegistered(Player $player): bool {
-        return $this->getDataProvider()->getPlayer($player) !== null;
-    }
-
     public function getAuthenticationFlowManager(): ?AuthenticationFlowManager {
         return $this->authenticationFlowManager;
+    }
+
+    public function getTitleManager(): ?TitleManager {
+        return $this->titleManager;
     }
 
     /**
@@ -313,14 +297,6 @@ class Main extends PluginBase {
         return $this->authenticationFlowManager->getOrderedAuthenticationSteps();
     }
 
-    public function clearTitleTask(Player $player): void {
-        $name = $player->getName();
-        if (isset($this->titleTasks[$name])) {
-            $this->titleTasks[$name]->cancel();
-            unset($this->titleTasks[$name]);
-        }
-    }
-
     public function cancelKickTask(Player $player): void {
         $name = $player->getName();
         if (isset($this->kickTasks[$name])) {
@@ -336,9 +312,7 @@ class Main extends PluginBase {
         }
     }
 
-    public function scheduleClearTitleTask(Player $player, int $delayTicks): void {
-        $this->getScheduler()->scheduleDelayedTask(new ClearTitleTask($this, $player), $delayTicks);
-    }
+
 
     public function onDisable(): void {
         if ($this->dataProvider !== null) {

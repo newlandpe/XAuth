@@ -2,11 +2,11 @@
 
 /*
  *
- * __  __    _         _   _
- * \ \/ /   / \  _   _| |_| |__
- *  \  /   / _ \| | | | __| '_ \
- *  /  \  / ___ \ |_| | |_| | | |
- * /_/\_\/_/   \_\__,_|\__|_| |_|
+ *  _          _   _     __  __  ____ _      __  __    _         _   _
+ * | |   _   _| |_| |__ |  \/  |/ ___( )___  \ \/ /   / \  _   _| |_| |__
+ * | |  | | | | __| '_ \| |\/| | |   |// __|  \  /   / _ \| | | | __| '_ \
+ * | |__| |_| | |_| | | | |  | | |___  \__ \  /  \  / ___ \ |_| | |_| | | |
+ * |_____\__,_|\__|_| |_|_|  |_|\____| |___/ /_/\_\/_/   \_\__,_|\__|_| |_|
  *
  * This program is free software: you can redistribute and/or modify
  * it under the terms of the CSSM Unlimited License v2.0.
@@ -85,7 +85,7 @@ class AuthenticationFlowManager {
      * @param string|null $startStepId If provided, starts from this step. Otherwise, starts from the beginning.
      */
     public function startAuthenticationFlow(Player $player, ?string $startStepId = null): void {
-        $playerName = $player->getName();
+        $playerName = strtolower($player->getName());
         $this->plugin->getLogger()->debug("XAuth: Starting authentication step chain for player {$playerName}.");
 
         $this->playerContexts[$playerName] = new AuthenticationContext();
@@ -93,7 +93,7 @@ class AuthenticationFlowManager {
 
         // If no ordered steps are defined in config, let XAuth handle it normally
         if (empty($this->orderedAuthenticationSteps)) {
-            Await::f2c(function() use ($player, $playerName) {
+            Await::g2c(function() use ($player, $playerName) {
                 $this->plugin->getLogger()->debug("No authentication flow order defined. Player '{$playerName}' will proceed with default XAuth flow.");
                 // Trigger XAuth's default login/register prompt here if needed
                 $playerData = yield from $this->plugin->getDataProvider()->getPlayer($player);
@@ -105,7 +105,7 @@ class AuthenticationFlowManager {
                     if ($formsEnabled) {
                         $this->plugin->getFormManager()->sendLoginForm($player);
                     } else {
-                        $this->plugin->sendTitleMessage($player, "login_prompt");
+                        $this->plugin->getTitleManager()->sendTitle($player, "login_prompt", null, true);
                     }
                 } else {
                     $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["register_prompt"] ?? "");
@@ -113,7 +113,7 @@ class AuthenticationFlowManager {
                     if ($formsEnabled) {
                         $this->plugin->getFormManager()->sendRegisterForm($player);
                     } else {
-                        $this->plugin->sendTitleMessage($player, "register_prompt");
+                        $this->plugin->getTitleManager()->sendTitle($player, "register_prompt", null, true);
                     }
                 }
             });
@@ -181,7 +181,7 @@ class AuthenticationFlowManager {
     }
 
     private function advanceFlow(Player $player, string $currentStepId): void {
-        $playerName = $player->getName();
+        $playerName = strtolower($player->getName());
 
         if (!isset($this->playerAuthenticationFlow[$playerName])) {
             $this->plugin->getLogger()->warning("Player '{$playerName}' completed/skipped step '{$currentStepId}' but is not in an active authentication flow.");
@@ -216,7 +216,7 @@ class AuthenticationFlowManager {
     }
 
     private function finalizeFlow(Player $player): void {
-        $playerName = $player->getName();
+        $playerName = strtolower($player->getName());
         $context = $this->getContextForPlayer($player);
 
         if ($context === null) {
@@ -235,7 +235,7 @@ class AuthenticationFlowManager {
             return;
         }
 
-        $this->plugin->getAuthenticationService()->finalizeAuthentication($player, $context);
+        Await::g2c($this->plugin->getAuthenticationService()->finalizeAuthentication($player, $context));
 
         foreach ($this->availableAuthenticationSteps as $step) {
             if ($step instanceof FinalizableStep) {
@@ -279,5 +279,14 @@ class AuthenticationFlowManager {
 
     public function getContextForPlayer(Player $player): ?AuthenticationContext {
         return $this->playerContexts[strtolower($player->getName())] ?? null;
+    }
+
+    public function ensureContextExists(Player $player): AuthenticationContext {
+        $playerName = strtolower($player->getName());
+        if (!isset($this->playerContexts[$playerName])) {
+            $this->plugin->getLogger()->debug("Creating new authentication context for {$playerName}");
+            $this->playerContexts[$playerName] = new AuthenticationContext();
+        }
+        return $this->playerContexts[$playerName];
     }
 }

@@ -2,11 +2,11 @@
 
 /*
  *
- * __  __    _         _   _
- * \ \/ /   / \  _   _| |_| |__
- *  \  /   / _ \| | | | __| '_ \
- *  /  \  / ___ \ |_| | |_| | | |
- * /_/\_\/_/   \_\__,_|\__|_| |_|
+ *  _          _   _     __  __  ____ _      __  __    _         _   _
+ * | |   _   _| |_| |__ |  \/  |/ ___( )___  \ \/ /   / \  _   _| |_| |__
+ * | |  | | | | __| '_ \| |\/| | |   |// __|  \  /   / _ \| | | | __| '_ \
+ * | |__| |_| | |_| | | | |  | | |___  \__ \  /  \  / ___ \ |_| | |_| | | |
+ * |_____\__,_|\__|_| |_|_|  |_|\____| |___/ /_/\_\/_/   \_\__,_|\__|_| |_|
  *
  * This program is free software: you can redistribute and/or modify
  * it under the terms of the CSSM Unlimited License v2.0.
@@ -34,22 +34,24 @@ use Luthfi\XAuth\Main;
 use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
 use pocketmine\player\Player;
-use pocketmine\plugin\Plugin;
 use pocketmine\plugin\PluginOwned;
+use pocketmine\plugin\PluginOwnedTrait;
+use SOFe\AwaitGenerator\Await;
+use Throwable;
 
 class UnregisterCommand extends Command implements PluginOwned {
+    use PluginOwnedTrait;
 
-    private Main $plugin;
-
-    public function __construct(Main $plugin) {
-        $messages = (array)$plugin->getCustomMessages()->get("messages");
+    public function __construct(
+        private readonly Main $plugin
+    ) {
+        $messages = (array)$this->plugin->getCustomMessages()->get("messages");
         parent::__construct(
             "unregister",
             (string)($messages["unregister_command_description"] ?? "Unregister your account."),
             (string)($messages["unregister_command_usage"] ?? "/unregister [confirm <password>]")
         );
         $this->setPermission("xauth.command.unregister");
-        $this->plugin = $plugin;
     }
 
     public function execute(CommandSender $sender, string $label, array $args): bool {
@@ -71,8 +73,6 @@ class UnregisterCommand extends Command implements PluginOwned {
             return false;
         }
 
-        $registrationService = $this->plugin->getRegistrationService();
-
         if (isset($args[0]) && strtolower($args[0]) === 'confirm') {
             if (!isset($args[1])) {
                 $sender->sendMessage((string)($messages["unregister_password_missing"] ?? "§cUsage: /unregister confirm <password>"));
@@ -80,26 +80,33 @@ class UnregisterCommand extends Command implements PluginOwned {
             }
             $password = $args[1];
 
-            try {
-                $registrationService->confirmUnregistration($sender, $password);
-            } catch (UnregistrationNotInitiatedException $e) {
-                $sender->sendMessage((string)($messages["unregister_not_initiated"] ?? "§cYou have not started the unregistration process. Type /unregister first."));
-            } catch (ConfirmationExpiredException $e) {
-                $sender->sendMessage((string)($messages["unregister_confirmation_expired"] ?? "§cUnregistration confirmation expired. Please start over."));
-            } catch (IncorrectPasswordException $e) {
-                $sender->sendMessage((string)($messages["incorrect_password"] ?? "§cIncorrect password."));
-            } catch (\Exception $e) {
-                $sender->sendMessage((string)($messages["unexpected_error"] ?? "§cAn unexpected error occurred. Please try again."));
-                $this->plugin->getLogger()->error("An unexpected error occurred during unregistration confirmation: " . $e->getMessage());
-            }
+            Await::g2c(
+                $this->plugin->getRegistrationService()->confirmUnregistration($sender, $password),
+                static function(): void {
+                    // Success is handled by the service (player is kicked)
+                },
+                function(Throwable $e) use ($sender, $messages): void {
+                    switch (true) {
+                        case $e instanceof UnregistrationNotInitiatedException:
+                            $sender->sendMessage((string)($messages["unregister_not_initiated"] ?? "§cYou have not started the unregistration process. Type /unregister first."));
+                            break;
+                        case $e instanceof ConfirmationExpiredException:
+                            $sender->sendMessage((string)($messages["unregister_confirmation_expired"] ?? "§cUnregistration confirmation expired. Please start over."));
+                            break;
+                        case $e instanceof IncorrectPasswordException:
+                            $sender->sendMessage((string)($messages["incorrect_password"] ?? "§cIncorrect password."));
+                            break;
+                        default:
+                            $sender->sendMessage((string)($messages["unexpected_error"] ?? "§cAn unexpected error occurred. Please try again."));
+                            $this->plugin->getLogger()->error("An unexpected error occurred during unregistration confirmation: " . $e->getMessage());
+                            break;
+                    }
+                }
+            );
         } else {
-            $registrationService->initiateUnregistration($sender);
+            $this->plugin->getRegistrationService()->initiateUnregistration($sender);
             $sender->sendMessage((string)($messages["unregister_initiate"] ?? "§eAre you sure you want to unregister? This action is irreversible.§r\n§eType §f/unregister confirm <password>§e within 60 seconds to confirm."));
         }
         return true;
-    }
-
-    public function getOwningPlugin(): Plugin {
-        return $this->plugin;
     }
 }

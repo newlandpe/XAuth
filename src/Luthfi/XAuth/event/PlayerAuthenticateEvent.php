@@ -2,11 +2,11 @@
 
 /*
  *
- * __  __    _         _   _
- * \ \/ /   / \  _   _| |_| |__
- *  \  /   / _ \| | | | __| '_ \
- *  /  \  / ___ \ |_| | |_| | | |
- * /_/\_\/_/   \_\__,_|\__|_| |_|
+ *  _          _   _     __  __  ____ _      __  __    _         _   _
+ * | |   _   _| |_| |__ |  \/  |/ ___( )___  \ \/ /   / \  _   _| |_| |__
+ * | |  | | | | __| '_ \| |\/| | |   |// __|  \  /   / _ \| | | | __| '_ \
+ * | |__| |_| | |_| | | | |  | | |___  \__ \  /  \  / ___ \ |_| | |_| | | |
+ * |_____\__,_|\__|_| |_|_|  |_|\____| |___/ /_/\_\/_/   \_\__,_|\__|_| |_|
  *
  * This program is free software: you can redistribute and/or modify
  * it under the terms of the CSSM Unlimited License v2.0.
@@ -36,7 +36,14 @@ use pocketmine\player\Player;
  */
 class PlayerAuthenticateEvent extends PlayerEvent {
 
-    public function __construct(Player $player) {
+    private string $loginType;
+
+    public function __construct(Player $player, string $loginType = PlayerPreAuthenticateEvent::LOGIN_TYPE_MANUAL) {
         $this->player = $player;
+        $this->loginType = $loginType;
+    }
+
+    public function getLoginType(): string {
+        return $this->loginType;
     }
 }

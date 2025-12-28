@@ -2,11 +2,11 @@
 
 /*
  *
- * __  __    _         _   _
- * \ \/ /   / \  _   _| |_| |__
- *  \  /   / _ \| | | | __| '_ \
- *  /  \  / ___ \ |_| | |_| | | |
- * /_/\_\/_/   \_\__,_|\__|_| |_|
+ *  _          _   _     __  __  ____ _      __  __    _         _   _
+ * | |   _   _| |_| |__ |  \/  |/ ___( )___  \ \/ /   / \  _   _| |_| |__
+ * | |  | | | | __| '_ \| |\/| | |   |// __|  \  /   / _ \| | | | __| '_ \
+ * | |__| |_| | |_| | | | |  | | |___  \__ \  /  \  / ___ \ |_| | |_| | | |
+ * |_____\__,_|\__|_| |_|_|  |_|\____| |___/ /_/\_\/_/   \_\__,_|\__|_| |_|
  *
  * This program is free software: you can redistribute and/or modify
  * it under the terms of the CSSM Unlimited License v2.0.
@@ -62,7 +62,7 @@ class XAuthLoginStep implements AuthenticationStep, FinalizableStep {
                 if ($formsEnabled) {
                     $this->plugin->getFormManager()->sendLoginForm($player);
                 } else {
-                    $this->plugin->sendTitleMessage($player, "login_prompt");
+                    $this->plugin->getTitleManager()->sendTitle($player, "login_prompt", null, true);
                 }
             } else {
                 $this->skip($player); 
@@ -82,8 +82,7 @@ class XAuthLoginStep implements AuthenticationStep, FinalizableStep {
         if ($context->wasStepCompleted($this->getId())) {
             $messages = (array)$this->plugin->getCustomMessages()->get("messages");
             $player->sendMessage((string)($messages["login_success"] ?? ""));
-            $this->plugin->sendTitleMessage($player, "login_success");
-            $this->plugin->scheduleClearTitleTask($player, 2 * 20);
+            $this->plugin->getTitleManager()->sendTitle($player, "login_success", 2 * 20);
         }
     }
 }

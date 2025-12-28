@@ -2,11 +2,11 @@
 
 /*
  *
- * __  __    _         _   _
- * \ \/ /   / \  _   _| |_| |__
- *  \  /   / _ \| | | | __| '_ \
- *  /  \  / ___ \ |_| | |_| | | |
- * /_/\_\/_/   \_\__,_|\__|_| |_|
+ *  _          _   _     __  __  ____ _      __  __    _         _   _
+ * | |   _   _| |_| |__ |  \/  |/ ___( )___  \ \/ /   / \  _   _| |_| |__
+ * | |  | | | | __| '_ \| |\/| | |   |// __|  \  /   / _ \| | | | __| '_ \
+ * | |__| |_| | |_| | | | |  | | |___  \__ \  /  \  / ___ \ |_| | |_| | | |
+ * |_____\__,_|\__|_| |_|_|  |_|\____| |___/ /_/\_\/_/   \_\__,_|\__|_| |_|
  *
  * This program is free software: you can redistribute and/or modify
  * it under the terms of the CSSM Unlimited License v2.0.
@@ -40,6 +40,7 @@ use pocketmine\event\Listener;
 use pocketmine\event\player\PlayerJoinEvent;
 use pocketmine\player\Player;
 use pocketmine\utils\SingletonTrait;
+use SOFe\AwaitGenerator\Await;
 
 class ScoreHudListener implements Listener {
     use SingletonTrait;
@@ -52,32 +53,37 @@ class ScoreHudListener implements Listener {
     }
 
     public static function updatePlayerTags(Player $player): void {
-        $plugin = self::getInstance()->plugin;
-        if (!ScoreHud::getInstance() instanceof ScoreHud) {
+        $instance = self::getInstance();
+        if (!$instance instanceof self || !ScoreHud::getInstance() instanceof ScoreHud) {
             return;
         }
 
-        $isAuthenticated = $plugin->getAuthenticationService()->isPlayerAuthenticated($player);
-        $isRegistered = $plugin->getDataProvider()->isPlayerRegistered($player->getName());
-        $isLocked = $plugin->getDataProvider()->isPlayerLocked($player->getName());
+        $plugin = $instance->plugin;
 
-        (new PlayerTagUpdateEvent($player, new ScoreTag("xauth.is_authenticated", $this->getScoreHudBooleanText("is_authenticated", $isAuthenticated))))->call();
-        (new PlayerTagUpdateEvent($player, new ScoreTag("xauth.is_registered", $this->getScoreHudBooleanText("is_registered", $isRegistered))))->call();
-        (new PlayerTagUpdateEvent($player, new ScoreTag("xauth.is_locked", $this->getScoreHudBooleanText("is_locked", $isLocked))))->call();
+        Await::f2c(function () use ($plugin, $player, $instance) {
+            $isAuthenticated = $plugin->getAuthenticationService()->isPlayerAuthenticated($player);
+            $isRegistered = yield from $plugin->getDataProvider()->isPlayerRegistered($player->getName());
+            $isLocked = yield from $plugin->getDataProvider()->isPlayerLocked($player->getName());
+
+            (new PlayerTagUpdateEvent($player, new ScoreTag("xauth.is_authenticated", $instance->getScoreHudBooleanText("is_authenticated", $isAuthenticated))))->call();
+            (new PlayerTagUpdateEvent($player, new ScoreTag("xauth.is_registered", $instance->getScoreHudBooleanText("is_registered", $isRegistered))))->call();
+            (new PlayerTagUpdateEvent($player, new ScoreTag("xauth.is_locked", $instance->getScoreHudBooleanText("is_locked", $isLocked))))->call();
+        });
     }
 
     private function getScoreHudBooleanText(string $tag, bool $value): string {
         $key = "scorehud_tags." . $tag . "." . ($value ? "true" : "false");
-        // Default values if not found in language file
         $defaultValue = $value ? "Yes" : "No";
         return (string)($this->plugin->getCustomMessages()->getNested($key) ?? $defaultValue);
     }
 
     public static function updateGlobalTags(): void {
-        $plugin = self::getInstance()->plugin;
-        if (!ScoreHud::getInstance() instanceof ScoreHud) {
+        $instance = self::getInstance();
+        if (!$instance instanceof self || !ScoreHud::getInstance() instanceof ScoreHud) {
             return;
         }
+
+        $plugin = $instance->plugin;
 
         $authenticatedPlayers = count($plugin->getAuthenticationService()->getAuthenticatedPlayers());
         $unauthenticatedPlayers = count($plugin->getServer()->getOnlinePlayers()) - $authenticatedPlayers;

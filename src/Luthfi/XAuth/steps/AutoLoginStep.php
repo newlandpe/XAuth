@@ -2,11 +2,11 @@
 
 /*
  *
- * __  __    _         _   _
- * \ \/ /   / \  _   _| |_| |__
- *  \  /   / _ \| | | | __| '_ \
- *  /  \  / ___ \ |_| | |_| | | |
- * /_/\_\/_/   \_\__,_|\__|_| |_|
+ *  _          _   _     __  __  ____ _      __  __    _         _   _
+ * | |   _   _| |_| |__ |  \/  |/ ___( )___  \ \/ /   / \  _   _| |_| |__
+ * | |  | | | | __| '_ \| |\/| | |   |// __|  \  /   / _ \| | | | __| '_ \
+ * | |__| |_| | |_| | | | |  | | |___  \__ \  /  \  / ___ \ |_| | |_| | | |
+ * |_____\__,_|\__|_| |_|_|  |_|\____| |___/ /_/\_\/_/   \_\__,_|\__|_| |_|
  *
  * This program is free software: you can redistribute and/or modify
  * it under the terms of the CSSM Unlimited License v2.0.
@@ -91,8 +91,7 @@ class AutoLoginStep implements AuthenticationStep, FinalizableStep {
         if ($context->wasStepCompleted($this->getId())) {
             $messages = (array)$this->plugin->getCustomMessages()->get("messages");
             $player->sendMessage((string)($messages["auto_login_success"] ?? "§aYou have been automatically logged in."));
-            $this->plugin->sendTitleMessage($player, "auto_login_success");
-            $this->plugin->scheduleClearTitleTask($player, 2 * 20);
+            $this->plugin->getTitleManager()->sendTitle($player, "auto_login_success", 2 * 20);
         }
     }
 }

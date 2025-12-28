@@ -1,12 +1,12 @@
 <?php
 
 /*
- *
- * __  __    _         _   _
- * \ \/ /   / \  _   _| |_| |__
- *  \  /   / _ \| | | | __| '_ \
- *  /  \  / ___ \ |_| | |_| | | |
- * /_/\_\/_/   \_\__,_|\__|_| |_|
+ * 
+ *  _          _   _     __  __  ____ _      __  __    _         _   _
+ * | |   _   _| |_| |__ |  \/  |/ ___( )___  \ \/ /   / \  _   _| |_| |__
+ * | |  | | | | __| '_ \| |\/| | |   |// __|  \  /   / _ \| | | | __| '_ \
+ * | |__| |_| | |_| | | | |  | | |___  \__ \  /  \  / ___ \ |_| | |_| | | |
+ * |_____\__,_|\__|_| |_|_|  |_|\____| |___/ /_/\_\/_/   \_\__,_|\__|_| |_|
  *
  * This program is free software: you can redistribute and/or modify
  * it under the terms of the CSSM Unlimited License v2.0.
@@ -29,55 +29,60 @@ namespace Luthfi\XAuth\database;
 
 use pocketmine\player\OfflinePlayer;
 use pocketmine\player\Player;
-use SOFe\AwaitGenerator\Await;
 
 interface DataProviderInterface {
 
-    public function getPlayer(Player|OfflinePlayer $player): Await;
+    public function initialize(): \Generator;
 
-    public function isPlayerRegistered(string $playerName): Await;
+    public function getPlayer(Player|OfflinePlayer $player): \Generator;
 
-    public function registerPlayer(Player $player, string $hashedPassword): Await;
+    public function isPlayerRegistered(string $playerName): \Generator;
 
-    public function updatePlayerIp(Player $player): Await;
+    public function registerPlayer(Player $player, string $hashedPassword): \Generator;
 
-    public function changePassword(Player|OfflinePlayer $player, string $newHashedPassword): Await;
+    public function updatePlayerIp(Player $player): \Generator;
 
-    public function unregisterPlayer(string $playerName): Await;
+    public function changePassword(Player|OfflinePlayer $player, string $newHashedPassword): \Generator;
 
-    public function setPlayerLocked(string $playerName, bool $locked): Await;
+    public function unregisterPlayer(string $playerName): \Generator;
 
-    public function isPlayerLocked(string $playerName): Await;
+    public function setPlayerLocked(string $playerName, bool $locked): \Generator;
 
-    public function setBlockedUntil(string $playerName, int $timestamp): Await;
+    public function isPlayerLocked(string $playerName): \Generator;
 
-    public function getBlockedUntil(string $playerName): Await;
+    public function setBlockedUntil(string $playerName, int $timestamp): \Generator;
 
-    public function setMustChangePassword(string $playerName, bool $required): Await;
+    public function getBlockedUntil(string $playerName): \Generator;
 
-    public function mustChangePassword(string $playerName): Await;
+    public function setMustChangePassword(string $playerName, bool $required): \Generator;
 
-    public function getAllPlayerData(): Await;
+    public function mustChangePassword(string $playerName): \Generator;
 
-    public function registerPlayerRaw(string $playerName, array $data): Await;
+    public function getTotalPlayerCount(): \Generator;
 
-    public function createSession(string $playerName, string $ipAddress, string $deviceId, int $lifetimeSeconds): Await;
+    public function getPlayerDataPaged(int $limit, int $offset): \Generator;
 
-    public function getSession(string $sessionId): Await;
+    public function getAllPlayerData(): \Generator;
 
-    public function getSessionsByPlayer(string $playerName): Await;
+    public function registerPlayerRaw(string $playerName, array $data): \Generator;
 
-    public function deleteSession(string $sessionId): Await;
+    public function createSession(string $playerName, string $ipAddress, string $deviceId, int $lifetimeSeconds): \Generator;
 
-    public function deleteAllSessionsForPlayer(string $playerName): Await;
+    public function getSession(string $sessionId): \Generator;
 
-    public function updateSessionLastActivity(string $sessionId): Await;
+    public function getSessionsByPlayer(string $playerName): \Generator;
 
-    public function refreshSession(string $sessionId, int $newLifetimeSeconds): Await;
+    public function deleteSession(string $sessionId): \Generator;
 
-    public function cleanupExpiredSessions(): Await;
+    public function deleteAllSessionsForPlayer(string $playerName): \Generator;
 
-    public function getRegistrationCountByIp(string $ipAddress): Await;
+    public function updateSessionLastActivity(string $sessionId): \Generator;
+
+    public function refreshSession(string $sessionId, int $newLifetimeSeconds): \Generator;
+
+    public function cleanupExpiredSessions(): \Generator;
+
+    public function getRegistrationCountByIp(string $ipAddress): \Generator;
 
     public function close(): void;
 }

@@ -2,11 +2,11 @@
 
 /*
  *
- * __  __    _         _   _
- * \ \/ /   / \  _   _| |_| |__
- *  \  /   / _ \| | | | __| '_ \
- *  /  \  / ___ \ |_| | |_| | | |
- * /_/\_\/_/   \_\__,_|\__|_| |_|
+ *  _          _   _     __  __  ____ _      __  __    _         _   _
+ * | |   _   _| |_| |__ |  \/  |/ ___( )___  \ \/ /   / \  _   _| |_| |__
+ * | |  | | | | __| '_ \| |\/| | |   |// __|  \  /   / _ \| | | | __| '_ \
+ * | |__| |_| | |_| | | | |  | | |___  \__ \  /  \  / ___ \ |_| | |_| | | |
+ * |_____\__,_|\__|_| |_|_|  |_|\____| |___/ /_/\_\/_/   \_\__,_|\__|_| |_|
  *
  * This program is free software: you can redistribute and/or modify
  * it under the terms of the CSSM Unlimited License v2.0.
@@ -78,9 +78,13 @@ class XAuthExpansion extends PlaceholderExpansion {
             case "is_authenticated":
                 return $this->getTranslatedText($placeholder, $this->plugin->getAuthenticationService()->isPlayerAuthenticated($player));
             case "is_registered":
-                return $this->getTranslatedText($placeholder, $this->plugin->getDataProvider()->isPlayerRegistered($player->getName()));
+                // TODO: This is not possible to implement synchronously with an async database.
+                // The original implementation was also broken.
+                return null;
             case "is_locked":
-                return $this->getTranslatedText($placeholder, $this->plugin->getDataProvider()->isPlayerLocked($player->getName()));
+                // TODO: This is not possible to implement synchronously with an async database.
+                // The original implementation was also broken.
+                return null;
         }
 
         return null;

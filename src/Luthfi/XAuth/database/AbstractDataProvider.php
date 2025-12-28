@@ -1,12 +1,12 @@
 <?php
 
 /*
- *
- * __  __    _         _   _
- * \ \/ /   / \  _   _| |_| |__
- *  \  /   / _ \| | | | __| '_ \
- *  /  \  / ___ \ |_| | |_| | | |
- * /_/\_\/_/   \_\__,_|\__|_| |_|
+ * 
+ *  _          _   _     __  __  ____ _      __  __    _         _   _
+ * | |   _   _| |_| |__ |  \/  |/ ___( )___  \ \/ /   / \  _   _| |_| |__
+ * | |  | | | | __| '_ \| |\/| | |   |// __|  \  /   / _ \| | | | __| '_ \
+ * | |__| |_| | |_| | | | |  | | |___  \__ \  /  \  / ___ \ |_| | |_| | | |
+ * |_____\__,_|\__|_| |_|_|  |_|\____| |___/ /_/\_\/_/   \_\__,_|\__|_| |_|
  *
  * This program is free software: you can redistribute and/or modify
  * it under the terms of the CSSM Unlimited License v2.0.
@@ -40,395 +40,418 @@ abstract class AbstractDataProvider implements DataProviderInterface {
     protected DataConnector $connector;
     protected Main $plugin;
 
-    public function __construct(Main $plugin) {
+    public function __construct(Main $plugin, DataConnector $connector) {
         $this->plugin = $plugin;
-        $config = $plugin->getConfig()->get('database');
-        if (!is_array($config)) {
-            $config = [];
-        }
-
-        $this->connector = libasynql::create(
-            $plugin,
-            $config,
-            $this->getSqlMap(),
-            $this->plugin->getConfig()->getNested('database.log_queries', false)
-        );
+        $this->connector = $connector;
+        $this->plugin->getLogger()->debug("AbstractDataProvider: DataConnector received.");
     }
 
-    public function initialize(): Await {
-        return Await::f2c(function () {
-            try {
-                yield from $this->connector->asyncGeneric('xauth.init');
-                $this->plugin->getLogger()->debug("Database tables initialized.");
-            } catch (SqlError $error) {
-                $this->plugin->getLogger()->error("Failed to initialize database tables: " . $error->getMessage());
-                throw $error;
-            }
-            yield from $this->init();
-        });
+    public function initialize(): \Generator {
+        $this->plugin->getLogger()->info("XAuth Final Debug: Initializing database tables.");
+        $this->connector->asyncGeneric('xauth.init_players');
+        $this->connector->asyncGeneric('xauth.init_sessions');
+        $this->plugin->getLogger()->info("XAuth Final Debug: 'xauth.init' dispatched.");
+        if (false) yield;
     }
-
-    abstract protected function init(): Await;
 
     abstract protected function getSqlMap(): array;
 
-    public function getPlayer(Player|OfflinePlayer $player): Await {
+    public function getPlayer(Player|OfflinePlayer $player): \Generator {
         $name = strtolower($player->getName());
-        return Await::f2c(function () use ($name) {
-            try {
-                $rows = yield from $this->connector->asyncSelect('xauth.players.get', ['name' => $name]);
-                return count($rows) > 0 ? $rows[0] : null;
-            } catch (SqlError $error) {
-                $this->plugin->getLogger()->error("Failed to get player data for {$name}: " . $error->getMessage());
-                return null;
-            }
-        });
+        try {
+            $rows = yield from $this->connector->asyncSelect('xauth.players.get', ['name' => $name]);
+            return count($rows) > 0 ? $rows[0] : null;
+        } catch (SqlError $error) {
+            $this->plugin->getLogger()->error("Failed to get player data for {$name}: " . $error->getMessage());
+            return null;
+        }
     }
 
-    public function isPlayerRegistered(string $playerName): Await {
+    public function isPlayerRegisteredSync(string $playerName): bool {
+        $result = false;
+        $this->connector->executeSelect('xauth.players.is_registered', ['name' => strtolower($playerName)], function(array $rows) use (&$result) {
+            $result = count($rows) > 0;
+        });
+        $this->connector->waitAll();
+        return $result;
+    }
+
+    public function isPlayerRegistered(string $playerName): \Generator {
         $name = strtolower($playerName);
-        return Await::f2c(function () use ($name) {
-            try {
-                $rows = yield from $this->connector->asyncSelect('xauth.players.is_registered', ['name' => $name]);
-                return count($rows) > 0;
-            } catch (SqlError $error) {
-                $this->plugin->getLogger()->error("Failed to check if player {$name} is registered: " . $error->getMessage());
-                return false;
-            }
-        });
+        try {
+            $rows = yield from $this->connector->asyncSelect('xauth.players.is_registered', ['name' => $name]);
+            return count($rows) > 0;
+        } catch (SqlError $error) {
+            $this->plugin->getLogger()->error("Failed to check if player {$name} is registered: " . $error->getMessage());
+            return false;
+        }
     }
 
-    public function registerPlayer(Player $player, string $hashedPassword): Await {
-        $name = strtolower($player->getName());
-        $ip = $player->getNetworkSession()->getIp();
-        return Await::f2c(function () use ($name, $hashedPassword, $ip) {
-            try {
-                yield from $this->connector->asyncInsert('xauth.players.register', [
-                    'name' => $name,
-                    'password' => $hashedPassword,
-                    'ip' => $ip,
-                    'registered_at' => time(),
-                    'registration_ip' => $ip,
-                    'last_login_at' => time()
-                ]);
-                $this->plugin->getLogger()->debug("Player {$name} registered successfully.");
-            } catch (SqlError $error) {
-                $this->plugin->getLogger()->error("Failed to register player {$name}: " . $error->getMessage());
-            }
-        });
-    }
-
-    public function updatePlayerIp(Player $player): Await {
+    public function registerPlayer(Player $player, string $hashedPassword): \Generator {
         $name = strtolower($player->getName());
         $ip = $player->getNetworkSession()->getIp();
-        return Await::f2c(function () use ($name, $ip) {
-            try {
-                yield from $this->connector->asyncChange('xauth.players.update_ip', [
-                    'name' => $name,
-                    'ip' => $ip,
-                    'last_login_at' => time()
-                ]);
-                $this->plugin->getLogger()->debug("Player {$name} IP updated successfully.");
-            } catch (SqlError $error) {
-                $this->plugin->getLogger()->error("Failed to update player {$name} IP: " . $error->getMessage());
-            }
-        });
+        try {
+            yield from $this->connector->asyncInsert('xauth.players.register', [
+                'name' => $name,
+                'password' => $hashedPassword,
+                'ip' => $ip,
+                'registered_at' => time(),
+                'registration_ip' => $ip,
+                'last_login_at' => time()
+            ]);
+            $this->plugin->getLogger()->debug("Player {$name} registered successfully.");
+        } catch (SqlError $error) {
+            $this->plugin->getLogger()->error("Failed to register player {$name}: " . $error->getMessage());
+            throw $error;
+        }
     }
 
-    public function changePassword(Player|OfflinePlayer $player, string $newHashedPassword): Await {
+    public function updatePlayerIp(Player $player): \Generator {
         $name = strtolower($player->getName());
-        return Await::f2c(function () use ($name, $newHashedPassword) {
-            try {
-                yield from $this->connector->asyncChange('xauth.players.change_password', [
-                    'name' => $name,
-                    'password' => $newHashedPassword
-                ]);
-                $this->plugin->getLogger()->debug("Player {$name} password changed successfully.");
-            } catch (SqlError $error) {
-                $this->plugin->getLogger()->error("Failed to change player {$name} password: " . $error->getMessage());
-            }
-        });
+        $ip = $player->getNetworkSession()->getIp();
+        try {
+            yield from $this->connector->asyncChange('xauth.players.update_ip', [
+                'name' => $name,
+                'ip' => $ip,
+                'last_login_at' => time()
+            ]);
+            $this->plugin->getLogger()->debug("Player {$name} IP updated successfully.");
+        } catch (SqlError $error) {
+            $this->plugin->getLogger()->error("Failed to update player {$name} IP: " . $error->getMessage());
+            throw $error;
+        }
     }
 
-    public function unregisterPlayer(string $playerName): Await {
+    public function changePassword(Player|OfflinePlayer $player, string $newHashedPassword): \Generator {
+        $name = strtolower($player->getName());
+        try {
+            yield from $this->connector->asyncChange('xauth.players.change_password', [
+                'name' => $name,
+                'password' => $newHashedPassword
+            ]);
+            $this->plugin->getLogger()->debug("Player {$name} password changed successfully.");
+        } catch (SqlError $error) {
+            $this->plugin->getLogger()->error("Failed to change player {$name} password: " . $error->getMessage());
+            throw $error;
+        }
+    }
+
+    public function unregisterPlayer(string $playerName): \Generator {
         $name = strtolower($playerName);
-        return Await::f2c(function () use ($name) {
-            try {
-                yield from $this->connector->asyncChange('xauth.players.unregister', [
-                    'name' => $name
-                ]);
-                $this->plugin->getLogger()->debug("Player {$name} unregistered successfully.");
-            } catch (SqlError $error) {
-                $this->plugin->getLogger()->error("Failed to unregister player {$name}: " . $error->getMessage());
-            }
-        });
+        try {
+            yield from $this->connector->asyncChange('xauth.players.unregister', [
+                'name' => $name
+            ]);
+            $this->plugin->getLogger()->debug("Player {$name} unregistered successfully.");
+        } catch (SqlError $error) {
+            $this->plugin->getLogger()->error("Failed to unregister player {$name}: " . $error->getMessage());
+            throw $error;
+        }
     }
 
-    public function setPlayerLocked(string $playerName, bool $locked): Await {
+    public function setPlayerLocked(string $playerName, bool $locked): \Generator {
         $name = strtolower($playerName);
-        return Await::f2c(function () use ($name, $locked) {
-            try {
-                yield from $this->connector->asyncChange('xauth.players.set_locked', [
-                    'name' => $name,
-                    'locked' => (int)$locked
-                ]);
-                $this->plugin->getLogger()->debug("Player {$name} locked status set to " . ($locked ? 'true' : 'false') . ".");
-            } catch (SqlError $error) {
-                $this->plugin->getLogger()->error("Failed to set player {$name} locked status: " . $error->getMessage());
-            }
-        });
+        try {
+            yield from $this->connector->asyncChange('xauth.players.set_locked', [
+                'name' => $name,
+                'locked' => (int)$locked
+            ]);
+            $this->plugin->getLogger()->debug("Player {$name} locked status set to " . ($locked ? 'true' : 'false') . ".");
+        } catch (SqlError $error) {
+            $this->plugin->getLogger()->error("Failed to set player {$name} locked status: " . $error->getMessage());
+            throw $error;
+        }
     }
 
-    public function isPlayerLocked(string $playerName): Await {
+    public function isPlayerLocked(string $playerName): \Generator {
         $name = strtolower($playerName);
-        return Await::f2c(function () use ($name) {
-            try {
-                $rows = yield from $this->connector->asyncSelect('xauth.players.is_locked', ['name' => $name]);
-                return count($rows) > 0 ? (bool)($rows[0]['locked'] ?? false) : false;
-            } catch (SqlError $error) {
-                $this->plugin->getLogger()->error("Failed to get player {$name} locked status: " . $error->getMessage());
-                return false;
-            }
-        });
+        try {
+            $rows = yield from $this->connector->asyncSelect('xauth.players.is_locked', ['name' => $name]);
+            return count($rows) > 0 ? (bool)($rows[0]['locked'] ?? false) : false;
+        } catch (SqlError $error) {
+            $this->plugin->getLogger()->error("Failed to get player {$name} locked status: " . $error->getMessage());
+            return false;
+        }
     }
 
-    public function setBlockedUntil(string $playerName, int $timestamp): Await {
+    public function setBlockedUntil(string $playerName, int $timestamp): \Generator {
         $name = strtolower($playerName);
-        return Await::f2c(function () use ($name, $timestamp) {
-            try {
-                yield from $this->connector->asyncChange('xauth.players.set_blocked_until', [
-                    'name' => $name,
-                    'timestamp' => $timestamp
-                ]);
-                $this->plugin->getLogger()->debug("Player {$name} blocked until {$timestamp}.");
-            } catch (SqlError $error) {
-                $this->plugin->getLogger()->error("Failed to set player {$name} blocked until: " . $error->getMessage());
-            }
-        });
+        try {
+            yield from $this->connector->asyncChange('xauth.players.set_blocked_until', [
+                'name' => $name,
+                'timestamp' => $timestamp
+            ]);
+            $this->plugin->getLogger()->debug("Player {$name} blocked until {$timestamp}.");
+        } catch (SqlError $error) {
+            $this->plugin->getLogger()->error("Failed to set player {$name} blocked until: " . $error->getMessage());
+            throw $error;
+        }
     }
 
-    public function getBlockedUntil(string $playerName): Await {
+    public function getBlockedUntil(string $playerName): \Generator {
         $name = strtolower($playerName);
-        return Await::f2c(function () use ($name) {
-            try {
-                $rows = yield from $this->connector->asyncSelect('xauth.players.get_blocked_until', ['name' => $name]);
-                return count($rows) > 0 ? (int)($rows[0]['blocked_until'] ?? 0) : 0;
-            } catch (SqlError $error) {
-                $this->plugin->getLogger()->error("Failed to get player {$name} blocked until: " . $error->getMessage());
-                return 0;
-            }
-        });
+        try {
+            $rows = yield from $this->connector->asyncSelect('xauth.players.get_blocked_until', ['name' => $name]);
+            return count($rows) > 0 ? (int)($rows[0]['blocked_until'] ?? 0) : 0;
+        } catch (SqlError $error) {
+            $this->plugin->getLogger()->error("Failed to get player {$name} blocked until: " . $error->getMessage());
+            return 0;
+        }
     }
 
-    public function setMustChangePassword(string $playerName, bool $required): Await {
+    public function setMustChangePassword(string $playerName, bool $required): \Generator {
         $name = strtolower($playerName);
-        return Await::f2c(function () use ($name, $required) {
-            try {
-                yield from $this->connector->asyncChange('xauth.players.set_must_change_password', [
-                    'name' => $name,
-                    'required' => (int)$required
-                ]);
-                $this->plugin->getLogger()->debug("Player {$name} must change password set to " . ($required ? 'true' : 'false') . ".");
-            } catch (SqlError $error) {
-                $this->plugin->getLogger()->error("Failed to set player {$name} must change password: " . $error->getMessage());
-            }
-        });
+        try {
+            yield from $this->connector->asyncChange('xauth.players.set_must_change_password', [
+                'name' => $name,
+                'required' => (int)$required
+            ]);
+            $this->plugin->getLogger()->debug("Player {$name} must change password set to " . ($required ? 'true' : 'false') . ".");
+        } catch (SqlError $error) {
+            $this->plugin->getLogger()->error("Failed to set player {$name} must change password: " . $error->getMessage());
+            throw $error;
+        }
     }
 
-    public function mustChangePassword(string $playerName): Await {
+    public function mustChangePassword(string $playerName): \Generator {
         $name = strtolower($playerName);
-        return Await::f2c(function () use ($name) {
-            try {
-                $rows = yield from $this->connector->asyncSelect('xauth.players.must_change_password', ['name' => $name]);
-                return count($rows) > 0 ? (bool)($rows[0]['must_change_password'] ?? false) : false;
-            } catch (SqlError $error) {
-                $this->plugin->getLogger()->error("Failed to get player {$name} must change password status: " . $error->getMessage());
-                return false;
-            }
-        });
+        try {
+            $rows = yield from $this->connector->asyncSelect('xauth.players.must_change_password', ['name' => $name]);
+            return count($rows) > 0 ? (bool)($rows[0]['must_change_password'] ?? false) : false;
+        } catch (SqlError $error) {
+            $this->plugin->getLogger()->error("Failed to get player {$name} must change password status: " . $error->getMessage());
+            return false;
+        }
     }
 
-    public function getAllPlayerData(): Await {
-        return Await::f2c(function () {
-            try {
-                $rows = yield from $this->connector->asyncSelect('xauth.players.get_all_data');
-                $data = [];
-                foreach ($rows as $row) {
-                    $data[strtolower($row['name'])] = $row;
-                }
-                return $data;
-            } catch (SqlError $error) {
-                $this->plugin->getLogger()->error("Failed to get all player data: " . $error->getMessage());
-                return [];
-            }
+    public function getTotalPlayerCountSync(): int {
+        $total = 0;
+        $this->connector->executeSelect("xauth.players.get_total_count", [], function(array $rows) use (&$total) {
+            $total = (int)($rows[0]['total'] ?? 0);
         });
+        $this->connector->waitAll();
+        return $total;
     }
 
-    public function registerPlayerRaw(string $playerName, array $data): Await {
+    public function getTotalPlayerCount(): \Generator {
+        try {
+            $rows = yield from $this->connector->asyncSelect("xauth.players.get_total_count");
+            return (int)($rows[0]['total'] ?? 0);
+        } catch (SqlError $error) {
+            $this->plugin->getLogger()->error("Failed to get total player count: " . $error->getMessage());
+            return 0;
+        }
+    }
+
+    public function getPlayerDataPagedSync(int $limit, int $offset): array {
+        $result = [];
+        $this->connector->executeSelect("xauth.players.get_paged", ["limit" => $limit, "offset" => $offset], function(array $rows) use (&$result) {
+            $result = $rows;
+        });
+        $this->connector->waitAll();
+        return $result;
+    }
+
+    public function getPlayerDataPaged(int $limit, int $offset): \Generator {
+        try {
+            return yield from $this->connector->asyncSelect("xauth.players.get_paged", ["limit" => $limit, "offset" => $offset]);
+        } catch (SqlError $error) {
+            $this->plugin->getLogger()->error("Failed to get paged player data: " . $error->getMessage());
+            return [];
+        }
+    }
+
+    public function getAllPlayerData(): \Generator {
+        try {
+            $rows = yield from $this->connector->asyncSelect('xauth.players.get_all_data');
+            $data = [];
+            foreach ($rows as $row) {
+                $data[strtolower($row['name'])] = $row;
+            }
+            return $data;
+        } catch (SqlError $error) {
+            $this->plugin->getLogger()->error("Failed to get all player data: " . $error->getMessage());
+            return [];
+        }
+    }
+
+    public function registerPlayerRawSync(string $playerName, array $data): void {
+        $this->connector->executeInsert('xauth.players.register_raw', [
+            'name' => strtolower($playerName),
+            'password' => $data['password'],
+            'ip' => $data['ip'],
+            'locked' => (int)($data['locked'] ?? false),
+            'registered_at' => $data['registered_at'],
+            'registration_ip' => $data['registration_ip'],
+            'last_login_at' => $data['last_login_at'],
+            'blocked_until' => $data['blocked_until'] ?? 0,
+            'must_change_password' => (int)($data['must_change_password'] ?? false)
+        ]);
+    }
+
+    public function registerPlayerRaw(string $playerName, array $data): \Generator {
         $name = strtolower($playerName);
-        return Await::f2c(function () use ($name, $data) {
-            try {
-                yield from $this->connector->asyncInsert('xauth.players.register_raw', [
-                    'name' => $name,
-                    'password' => $data['password'],
-                    'ip' => $data['ip'],
-                    'locked' => (int)($data['locked'] ?? false),
-                    'registered_at' => $data['registered_at'],
-                    'registration_ip' => $data['registration_ip'],
-                    'last_login_at' => $data['last_login_at'],
-                    'blocked_until' => $data['blocked_until'] ?? 0,
-                    'must_change_password' => (int)($data['must_change_password'] ?? false)
-                ]);
-                $this->plugin->getLogger()->debug("Raw player {$name} registered successfully.");
-            } catch (SqlError $error) {
-                $this->plugin->getLogger()->error("Failed to register raw player {$name}: " . $error->getMessage());
-            }
-        });
+        try {
+            yield from Await::f2c(fn() => yield from $this->connector->asyncInsert('xauth.players.register_raw', [
+                'name' => $name,
+                'password' => $data['password'],
+                'ip' => $data['ip'],
+                'locked' => (int)($data['locked'] ?? false),
+                'registered_at' => $data['registered_at'],
+                'registration_ip' => $data['registration_ip'],
+                'last_login_at' => $data['last_login_at'],
+                'blocked_until' => $data['blocked_until'] ?? 0,
+                'must_change_password' => (int)($data['must_change_password'] ?? false)
+            ]));
+            $this->plugin->getLogger()->debug("Raw player {$name} registered successfully.");
+        } catch (SqlError $error) {
+            $this->plugin->getLogger()->error("Failed to register raw player {$name}: " . $error->getMessage());
+            throw $error;
+        }
     }
 
-    public function createSession(string $playerName, string $ipAddress, string $deviceId, int $lifetimeSeconds): Await {
+    public function createSession(string $playerName, string $ipAddress, string $deviceId, int $lifetimeSeconds): \Generator {
         $sessionId = bin2hex(random_bytes(16));
         $loginTime = time();
         $expirationTime = $loginTime + $lifetimeSeconds;
 
-        return Await::f2c(function () use ($sessionId, $playerName, $ipAddress, $deviceId, $loginTime, $expirationTime) {
-            try {
-                yield from $this->connector->asyncInsert('xauth.sessions.create', [
-                    'session_id' => $sessionId,
-                    'player_name' => strtolower($playerName),
-                    'ip_address' => $ipAddress,
-                    'device_id' => $deviceId,
-                    'login_time' => $loginTime,
-                    'last_activity' => $loginTime,
-                    'expiration_time' => $expirationTime
-                ]);
-                $this->plugin->getLogger()->debug("Session {$sessionId} created for player {$playerName}.");
-                return $sessionId;
-            } catch (SqlError $error) {
-                $this->plugin->getLogger()->error("Failed to create session for player {$playerName}: " . $error->getMessage());
-                return null;
-            }
-        });
+        try {
+            yield from $this->connector->asyncInsert('xauth.sessions.create', [
+                'session_id' => $sessionId,
+                'player_name' => strtolower($playerName),
+                'ip_address' => $ipAddress,
+                'device_id' => $deviceId,
+                'login_time' => $loginTime,
+                'last_activity' => $loginTime,
+                'expiration_time' => $expirationTime
+            ]);
+            $this->plugin->getLogger()->debug("Session {$sessionId} created for player {$playerName}.");
+            return $sessionId;
+        } catch (SqlError $error) {
+            $this->plugin->getLogger()->error("Failed to create session for player {$playerName}: " . $error->getMessage());
+            return null;
+        }
     }
 
-    public function getSession(string $sessionId): Await {
-        return Await::f2c(function () use ($sessionId) {
-            try {
-                $rows = yield from $this->connector->asyncSelect('xauth.sessions.get', [
-                    'session_id' => $sessionId,
-                    'current_time' => time()
-                ]);
-                return count($rows) > 0 ? $rows[0] : null;
-            } catch (SqlError $error) {
-                $this->plugin->getLogger()->error("Failed to get session {$sessionId}: " . $error->getMessage());
-                return null;
-            }
-        });
+    public function getSession(string $sessionId): \Generator {
+        try {
+            $rows = yield from $this->connector->asyncSelect('xauth.sessions.get', [
+                'session_id' => $sessionId,
+                'current_time' => time()
+            ]);
+            return count($rows) > 0 ? $rows[0] : null;
+        } catch (SqlError $error) {
+            $this->plugin->getLogger()->error("Failed to get session {$sessionId}: " . $error->getMessage());
+            return null;
+        }
     }
 
-    public function getSessionsByPlayer(string $playerName): Await {
+    public function getSessionsByPlayer(string $playerName): \Generator {
         $name = strtolower($playerName);
-        return Await::f2c(function () use ($name) {
-            try {
-                $rows = yield from $this->connector->asyncSelect('xauth.sessions.get_by_player', [
-                    'player_name' => $name,
-                    'current_time' => time()
-                ]);
-                $sessions = [];
-                foreach ($rows as $row) {
-                    $sessions[$row['session_id']] = $row;
-                }
-                return $sessions;
-            } catch (SqlError $error) {
-                $this->plugin->getLogger()->error("Failed to get sessions for player {$name}: " . $error->getMessage());
-                return [];
+        try {
+            $rows = yield from $this->connector->asyncSelect('xauth.sessions.get_by_player', [
+                'player_name' => $name,
+                'current_time' => time()
+            ]);
+            $sessions = [];
+            foreach ($rows as $row) {
+                $sessions[$row['session_id']] = $row;
             }
-        });
+            return $sessions;
+        } catch (SqlError $error) {
+            $this->plugin->getLogger()->error("Failed to get sessions for player {$name}: " . $error->getMessage());
+            return [];
+        }
     }
 
-    public function deleteSession(string $sessionId): Await {
-        return Await::f2c(function () use ($sessionId) {
-            try {
-                yield from $this->connector->asyncChange('xauth.sessions.delete', [
-                    'session_id' => $sessionId
-                ]);
-                $this->plugin->getLogger()->debug("Session {$sessionId} deleted.");
-            } catch (SqlError $error) {
-                $this->plugin->getLogger()->error("Failed to delete session {$sessionId}: " . $error->getMessage());
-            }
-        });
+    public function deleteSession(string $sessionId): \Generator {
+        try {
+            yield from $this->connector->asyncChange('xauth.sessions.delete', [
+                'session_id' => $sessionId
+            ]);
+            $this->plugin->getLogger()->debug("Session {$sessionId} deleted.");
+        } catch (SqlError $error) {
+            $this->plugin->getLogger()->error("Failed to delete session {$sessionId}: " . $error->getMessage());
+            throw $error;
+        }
     }
 
-    public function deleteAllSessionsForPlayer(string $playerName): Await {
+    public function deleteAllSessionsForPlayer(string $playerName): \Generator {
         $name = strtolower($playerName);
-        return Await::f2c(function () use ($name) {
-            try {
-                yield from $this->connector->asyncChange('xauth.sessions.delete_all_for_player', [
-                    'player_name' => $name
-                ]);
-                $this->plugin->getLogger()->debug("All sessions deleted for player {$name}.");
-            } catch (SqlError $error) {
-                $this->plugin->getLogger()->error("Failed to delete all sessions for player {$name}: " . $error->getMessage());
-            }
-        });
+        try {
+            yield from $this->connector->asyncChange('xauth.sessions.delete_all_for_player', [
+                'player_name' => $name
+            ]);
+            $this->plugin->getLogger()->debug("All sessions deleted for player {$name}.");
+        } catch (SqlError $error) {
+            $this->plugin->getLogger()->error("Failed to delete all sessions for player {$name}: " . $error->getMessage());
+            throw $error;
+        }
     }
 
-    public function updateSessionLastActivity(string $sessionId): Await {
-        return Await::f2c(function () use ($sessionId) {
-            try {
-                yield from $this->connector->asyncChange('xauth.sessions.update_last_activity', [
-                    'session_id' => $sessionId,
-                    'current_time' => time()
-                ]);
-                $this->plugin->getLogger()->debug("Session {$sessionId} last activity updated.");
-            } catch (SqlError $error) {
-                $this->plugin->getLogger()->error("Failed to update session {$sessionId} last activity: " . $error->getMessage());
-            }
-        });
+    public function updateSessionLastActivity(string $sessionId): \Generator {
+        try {
+            yield from $this->connector->asyncChange('xauth.sessions.update_last_activity', [
+                'session_id' => $sessionId,
+                'current_time' => time()
+            ]);
+            $this->plugin->getLogger()->debug("Session {$sessionId} last activity updated.");
+        } catch (SqlError $error) {
+            $this->plugin->getLogger()->error("Failed to update session {$sessionId} last activity: " . $error->getMessage());
+            throw $error;
+        }
     }
 
-    public function refreshSession(string $sessionId, int $newLifetimeSeconds): Await {
-        return Await::f2c(function () use ($sessionId, $newLifetimeSeconds) {
-            try {
-                yield from $this->connector->asyncChange('xauth.sessions.refresh', [
-                    'session_id' => $sessionId,
-                    'expiration_time' => time() + $newLifetimeSeconds
-                ]);
-                $this->plugin->getLogger()->debug("Session {$sessionId} refreshed.");
-            } catch (SqlError $error) {
-                $this->plugin->getLogger()->error("Failed to refresh session {$sessionId}: " . $error->getMessage());
-            }
-        });
+    public function refreshSession(string $sessionId, int $newLifetimeSeconds): \Generator {
+        try {
+            yield from $this->connector->asyncChange('xauth.sessions.refresh', [
+                'session_id' => $sessionId,
+                'expiration_time' => time() + $newLifetimeSeconds
+            ]);
+            $this->plugin->getLogger()->debug("Session {$sessionId} refreshed.");
+        } catch (SqlError $error) {
+            $this->plugin->getLogger()->error("Failed to refresh session {$sessionId}: " . $error->getMessage());
+            throw $error;
+        }
     }
 
-    public function cleanupExpiredSessions(): Await {
-        return Await::f2c(function () {
-            try {
-                yield from $this->connector->asyncChange('xauth.sessions.cleanup_expired', [
-                    'current_time' => time()
-                ]);
-                $this->plugin->getLogger()->debug("Expired sessions cleaned up.");
-            } catch (SqlError $error) {
-                $this->plugin->getLogger()->error("Failed to clean up expired sessions: " . $error->getMessage());
-            }
-        });
+    public function cleanupExpiredSessions(): \Generator {
+        try {
+            yield from $this->connector->asyncChange('xauth.sessions.cleanup_expired', [
+                'current_time' => time()
+            ]);
+            $this->plugin->getLogger()->debug("Expired sessions cleaned up.");
+        } catch (SqlError $error) {
+            $this->plugin->getLogger()->error("Failed to clean up expired sessions: " . $error->getMessage());
+            throw $error;
+        }
     }
 
-    public function getRegistrationCountByIp(string $ipAddress): Await {
-        return Await::f2c(function () use ($ipAddress) {
-            try {
-                $rows = yield from $this->connector->asyncSelect('xauth.players.get_registration_count_by_ip', [
-                    'ip' => $ipAddress
-                ]);
-                return count($rows) > 0 ? (int)($rows[0]['count'] ?? 0) : 0;
-            } catch (SqlError $error) {
-                $this->plugin->getLogger()->error("Failed to get registration count for IP {$ipAddress}: " . $error->getMessage());
-                return 0;
-            }
-        });
+    public function getRegistrationCountByIp(string $ipAddress): \Generator {
+        try {
+            $rows = yield from $this->connector->asyncSelect('xauth.players.get_registration_count_by_ip', [
+                'ip' => $ipAddress
+            ]);
+            return count($rows) > 0 ? (int)($rows[0]['count'] ?? 0) : 0;
+        } catch (SqlError $error) {
+            $this->plugin->getLogger()->error("Failed to get registration count for IP {$ipAddress}: " . $error->getMessage());
+            return 0;
+        }
+    }
+
+    public function initializeSync(): void {
+        $this->plugin->getLogger()->debug("Initializing database tables (SYNC)...");
+        $this->connector->executeGeneric('xauth.init_players');
+        $this->connector->executeGeneric('xauth.init_sessions');
+        $this->connector->waitAll();
+        $this->plugin->getLogger()->debug("Database tables initialized (SYNC).");
     }
 
     public function close(): void {
         $this->connector->close();
+    }
+
+    public function getConnector(): DataConnector {
+        return $this->connector;
     }
 }

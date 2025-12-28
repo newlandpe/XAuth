@@ -2,11 +2,11 @@
 
 /*
  *
- * __  __    _         _   _
- * \ \/ /   / \  _   _| |_| |__
- *  \  /   / _ \| | | | __| '_ \
- *  /  \  / ___ \ |_| | |_| | | |
- * /_/\_\/_/   \_\__,_|\__|_| |_|
+ *  _          _   _     __  __  ____ _      __  __    _         _   _
+ * | |   _   _| |_| |__ |  \/  |/ ___( )___  \ \/ /   / \  _   _| |_| |__
+ * | |  | | | | __| '_ \| |\/| | |   |// __|  \  /   / _ \| | | | __| '_ \
+ * | |__| |_| | |_| | | | |  | | |___  \__ \  /  \  / ___ \ |_| | |_| | | |
+ * |_____\__,_|\__|_| |_|_|  |_|\____| |___/ /_/\_\/_/   \_\__,_|\__|_| |_|
  *
  * This program is free software: you can redistribute and/or modify
  * it under the terms of the CSSM Unlimited License v2.0.
@@ -68,6 +68,14 @@ class PlayerState {
     }
 
     public function restore(Player $player): void {
+        $player->getInventory()->setContents($this->inventoryContents);
+        $player->getArmorInventory()->setContents($this->armorInventoryContents);
+        $player->getOffHandInventory()->setContents($this->offHandInventoryContents);
+        $player->getEffects()->clear();
+        foreach ($this->effects as $effect) {
+            $player->getEffects()->add($effect);
+        }
+
         if ((bool)($this->plugin->getConfig()->get('apply_blindness') ?? true)) {
             $player->getEffects()->remove(VanillaEffects::BLINDNESS());
         }
@@ -78,13 +86,6 @@ class PlayerState {
             $player->getEffects()->remove(VanillaEffects::INVISIBILITY());
         }
 
-        $player->getInventory()->setContents($this->inventoryContents);
-        $player->getArmorInventory()->setContents($this->armorInventoryContents);
-        $player->getOffHandInventory()->setContents($this->offHandInventoryContents);
-        $player->getEffects()->clear();
-        foreach ($this->effects as $effect) {
-            $player->getEffects()->add($effect);
-        }
         $player->setHealth($this->health);
         $player->getHungerManager()->setFood($this->food);
         $player->getXpManager()->setXpLevel($this->xpLevel);

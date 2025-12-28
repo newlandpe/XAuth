@@ -2,11 +2,11 @@
 
 /*
  *
- * __  __    _         _   _
- * \ \/ /   / \  _   _| |_| |__
- *  \  /   / _ \| | | | __| '_ \
- *  /  \  / ___ \ |_| | |_| | | |
- * /_/\_\/_/   \_\__,_|\__|_| |_|
+ *  _          _   _     __  __  ____ _      __  __    _         _   _
+ * | |   _   _| |_| |__ |  \/  |/ ___( )___  \ \/ /   / \  _   _| |_| |__
+ * | |  | | | | __| '_ \| |\/| | |   |// __|  \  /   / _ \| | | | __| '_ \
+ * | |__| |_| | |_| | | | |  | | |___  \__ \  /  \  / ___ \ |_| | |_| | | |
+ * |_____\__,_|\__|_| |_|_|  |_|\____| |___/ /_/\_\/_/   \_\__,_|\__|_| |_|
  *
  * This program is free software: you can redistribute and/or modify
  * it under the terms of the CSSM Unlimited License v2.0.
@@ -74,7 +74,6 @@ class PlayerSessionListener implements Listener {
         $bruteforceConfig = (array)$this->plugin->getConfig()->get('bruteforce_protection');
         $name = $event->getPlayerInfo()->getUsername();
 
-        // Capture DeviceId for later use in onJoin
         $extraData = $event->getPlayerInfo()->getExtraData();
         if(isset($extraData['DeviceId'])){
             $this->plugin->deviceIds[strtolower($name)] = $extraData['DeviceId'];
@@ -91,11 +90,14 @@ class PlayerSessionListener implements Listener {
                 return;
             }
 
-            if ((bool)($bruteforceConfig['enabled'] ?? false) && (yield from $this->plugin->getDataProvider()->getBlockedUntil($name)) > time()) {
-                $remainingMinutes = (int)ceil(((yield from $this->plugin->getDataProvider()->getBlockedUntil($name)) - time()) / 60);
-                $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["login_attempts_exceeded"] ?? "");
-                $message = str_replace('{minutes}', (string)$remainingMinutes, $message);
-                $event->setKickFlag(PlayerPreLoginEvent::KICK_FLAG_BANNED, $message);
+            if ((bool)($bruteforceConfig['enabled'] ?? false)) {
+                $blockedUntil = yield from $this->plugin->getDataProvider()->getBlockedUntil($name);
+                if ($blockedUntil > time()) {
+                    $remainingMinutes = (int)ceil(($blockedUntil - time()) / 60);
+                    $message = (string)(((array)$this->plugin->getCustomMessages()->get("messages"))["login_attempts_exceeded"] ?? "");
+                    $message = str_replace('{minutes}', (string)$remainingMinutes, $message);
+                    $event->setKickFlag(PlayerPreLoginEvent::KICK_FLAG_BANNED, $message);
+                }
             }
         });
     }
@@ -108,21 +110,17 @@ class PlayerSessionListener implements Listener {
         $player = $event->getPlayer();
         $authenticationService = $this->plugin->getAuthenticationService();
 
-        Await::f2c(function () use ($player, $authenticationService) {
-            if ($authenticationService->isPlayerAuthenticated($player)) {
-                return;
-            }
+        if ($authenticationService->isPlayerAuthenticated($player)) {
+            return;
+        }
 
-            $this->plugin->startAuthenticationStep($player);
-        });
+        $this->plugin->startAuthenticationStep($player);
     }
 
     public function onPlayerQuit(PlayerQuitEvent $event): void {
         $lowerPlayerName = strtolower($event->getPlayer()->getName());
-        unset($this->plugin->deviceIds[$lowerPlayerName]); // Clean up in case of crash or unexpected quit
-        Await::f2c(function () use ($event) {
-            yield from $this->plugin->getAuthenticationService()->handleQuit($event->getPlayer());
-        });
+        unset($this->plugin->deviceIds[$lowerPlayerName]);
+        $this->plugin->getAuthenticationService()->handleQuit($event->getPlayer());
     }
 
     public function onPacketSend(DataPacketSendEvent $event): void {
@@ -152,14 +150,12 @@ class PlayerSessionListener implements Listener {
                 $playerName = $entry->username;
                 $player = $this->plugin->getServer()->getPlayerExact($playerName);
 
-                Await::f2c(function () use ($player, &$modifiedEntries, &$hasChanges, $entry) {
-                    if ($player === null || !$this->plugin->getAuthenticationService()->isPlayerAuthenticated($player)) {
-                        $hasChanges = true;
-                        return;
-                    }
+                if ($player === null || !$this->plugin->getAuthenticationService()->isPlayerAuthenticated($player)) {
+                    $hasChanges = true;
+                    return;
+                }
 
-                    $modifiedEntries[] = $entry;
-                });
+                $modifiedEntries[] = $entry;
             }
 
             if (empty($modifiedEntries)) {

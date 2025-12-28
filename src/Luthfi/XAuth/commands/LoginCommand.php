@@ -2,11 +2,11 @@
 
 /*
  *
- * __  __    _         _   _
- * \ \/ /   / \  _   _| |_| |__
- *  \  /   / _ \| | | | __| '_ \
- *  /  \  / ___ \ |_| | |_| | | |
- * /_/\_\/_/   \_\__,_|\__|_| |_|
+ *  _          _   _     __  __  ____ _      __  __    _         _   _
+ * | |   _   _| |_| |__ |  \/  |/ ___( )___  \ \/ /   / \  _   _| |_| |__
+ * | |  | | | | __| '_ \| |\/| | |   |// __|  \  /   / _ \| | | | __| '_ \
+ * | |__| |_| | |_| | | | |  | | |___  \__ \  /  \  / ___ \ |_| | |_| | | |
+ * |_____\__,_|\__|_| |_|_|  |_|\____| |___/ /_/\_\/_/   \_\__,_|\__|_| |_|
  *
  * This program is free software: you can redistribute and/or modify
  * it under the terms of the CSSM Unlimited License v2.0.
@@ -36,22 +36,24 @@ use Luthfi\XAuth\Main;
 use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
 use pocketmine\player\Player;
-use pocketmine\plugin\Plugin;
 use pocketmine\plugin\PluginOwned;
+use pocketmine\plugin\PluginOwnedTrait;
+use SOFe\AwaitGenerator\Await;
+use Throwable;
 
 class LoginCommand extends Command implements PluginOwned {
+    use PluginOwnedTrait;
 
-    private Main $plugin;
-
-    public function __construct(Main $plugin) {
-        $messages = (array)$plugin->getCustomMessages()->get("messages");
+    public function __construct(
+        private readonly Main $plugin
+    ) {
+        $messages = (array)$this->plugin->getCustomMessages()->get("messages");
         parent::__construct(
             "login",
             (string)($messages["login_command_description"] ?? "Login to your account"),
             (string)($messages["login_command_usage"] ?? "/login <password>")
         );
         $this->setPermission("xauth.command.login");
-        $this->plugin = $plugin;
     }
 
     public function execute(CommandSender $sender, string $label, array $args): bool {
@@ -68,34 +70,43 @@ class LoginCommand extends Command implements PluginOwned {
         $password = $args[0];
         $messages = (array)$this->plugin->getCustomMessages()->get("messages");
 
-        try {
-            $this->plugin->getAuthenticationService()->handleLoginRequest($sender, $password);
-        } catch (AlreadyLoggedInException $e) {
-            $sender->sendMessage((string)($messages["already_logged_in"] ?? "§cYou are already logged in."));
-        } catch (PlayerBlockedException $e) {
-            $message = (string)($messages["login_attempts_exceeded"] ?? "§cYou have exceeded the number of login attempts. Please try again in {minutes} minutes.");
-            $message = str_replace('{minutes}', (string)$e->getRemainingMinutes(), $message);
-            $bruteforceConfig = (array)$this->plugin->getConfig()->get('bruteforce_protection');
-            $kickOnBlock = (bool)($bruteforceConfig['kick_on_block'] ?? true);
-            if ($kickOnBlock) {
-                $sender->kick($message);
-            } else {
-                $sender->sendMessage($message);
+        Await::g2c(
+            $this->plugin->getAuthenticationService()->handleLoginRequest($sender, $password),
+            static function(): void {
+                // Success is handled by the service
+            },
+            function(Throwable $e) use ($sender, $messages): void {
+                switch (true) {
+                    case $e instanceof AlreadyLoggedInException:
+                        $sender->sendMessage((string)($messages["already_logged_in"] ?? "§cYou are already logged in."));
+                        break;
+                    case $e instanceof PlayerBlockedException:
+                        $message = (string)($messages["login_attempts_exceeded"] ?? "§cYou have exceeded the number of login attempts. Please try again in {minutes} minutes.");
+                        $message = str_replace('{minutes}', (string)$e->getRemainingMinutes(), $message);
+                        $bruteforceConfig = (array)$this->plugin->getConfig()->get('bruteforce_protection');
+                        $kickOnBlock = (bool)($bruteforceConfig['kick_on_block'] ?? true);
+                        if ($kickOnBlock) {
+                            $sender->kick($message);
+                        } else {
+                            $sender->sendMessage($message);
+                        }
+                        break;
+                    case $e instanceof NotRegisteredException:
+                        $sender->sendMessage((string)($messages["not_registered"] ?? "§cYou are not registered. Please use /register <password> to register."));
+                        break;
+                    case $e instanceof AccountLockedException:
+                        $sender->sendMessage((string)($messages["account_locked_by_admin"] ?? "§cYour account has been locked by an administrator."));
+                        break;
+                    case $e instanceof IncorrectPasswordException:
+                        $sender->sendMessage((string)($messages["incorrect_password"] ?? "§cIncorrect password. Please try again."));
+                        break;
+                    default:
+                        $sender->sendMessage((string)($messages["unexpected_error"] ?? "§cAn unexpected error occurred. Please try again."));
+                        $this->plugin->getLogger()->error("An unexpected error occurred during login: " . $e->getMessage());
+                        break;
+                }
             }
-        } catch (NotRegisteredException $e) {
-            $sender->sendMessage((string)($messages["not_registered"] ?? "§cYou are not registered. Please use /register <password> to register."));
-        } catch (AccountLockedException $e) {
-            $sender->sendMessage((string)($messages["account_locked_by_admin"] ?? "§cYour account has been locked by an administrator."));
-        } catch (IncorrectPasswordException $e) {
-            $sender->sendMessage((string)($messages["incorrect_password"] ?? "§cIncorrect password. Please try again."));
-        } catch (\Exception $e) {
-            $sender->sendMessage((string)($messages["unexpected_error"] ?? "§cAn unexpected error occurred. Please try again."));
-            $this->plugin->getLogger()->error("An unexpected error occurred during login: " . $e->getMessage());
-        }
+        );
         return true;
-    }
-
-    public function getOwningPlugin(): Plugin {
-        return $this->plugin;
     }
 }

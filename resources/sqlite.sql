@@ -1,5 +1,5 @@
 -- #!sqlite
--- # { xauth.init
+-- # { xauth.init_players
 CREATE TABLE IF NOT EXISTS players (
     name TEXT PRIMARY KEY,
     password TEXT,
@@ -11,6 +11,9 @@ CREATE TABLE IF NOT EXISTS players (
     blocked_until INTEGER DEFAULT 0,
     must_change_password INTEGER DEFAULT 0
 );
+-- # }
+
+-- # { xauth.init_sessions
 CREATE TABLE IF NOT EXISTS sessions (
     session_id TEXT PRIMARY KEY,
     player_name TEXT NOT NULL,
@@ -37,11 +40,10 @@ SELECT name FROM players WHERE name = :name;
 -- # :name string
 -- # :password string
 -- # :ip string
--- # :locked int
 -- # :registered_at int
 -- # :registration_ip string
 -- # :last_login_at int
-INSERT INTO players (name, password, ip, locked, registered_at, registration_ip, last_login_at) VALUES (:name, :password, :ip, :locked, :registered_at, :registration_ip, :last_login_at);
+INSERT INTO players (name, password, ip, registered_at, registration_ip, last_login_at) VALUES (:name, :password, :ip, :registered_at, :registration_ip, :last_login_at);
 -- # }
 
 -- # { xauth.players.update_ip
@@ -93,6 +95,16 @@ UPDATE players SET must_change_password = :required WHERE name = :name;
 -- # { xauth.players.must_change_password
 -- # :name string
 SELECT must_change_password FROM players WHERE name = :name;
+-- # }
+
+-- # { xauth.players.get_total_count
+SELECT COUNT(*) as total FROM players;
+-- # }
+
+-- # { xauth.players.get_paged
+-- # :limit int
+-- # :offset int
+SELECT * FROM players ORDER BY name LIMIT :limit OFFSET :offset;
 -- # }
 
 -- # { xauth.players.get_all_data
